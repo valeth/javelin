@@ -1,0 +1,8 @@
+version: "3.7"
+
+services:
+  javelin:
+    image: registry.gitlab.com/valeth/javelin:develop
+    build: .
+    ports:
+      - "1935:1935"
