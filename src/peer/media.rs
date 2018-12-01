@@ -77,4 +77,8 @@ impl Channel {
         self.video_seq_header = None;
         self.audio_seq_header = None;
     }
+
+    pub fn set_metadata(&mut self, metadata: StreamMetadata) {
+        self.metadata = Some(metadata)
+    }
 }

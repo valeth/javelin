@@ -94,8 +94,8 @@ impl Handler {
             PlayStreamRequested { request_id, app_name, stream_id, .. } => {
                 self.play_requested(request_id, app_name, stream_id)?;
             },
-            StreamMetadataChanged { app_name, stream_key, metadata } => {
-                self.metadata_received(app_name, stream_key, metadata)?;
+            StreamMetadataChanged { app_name, metadata, .. } => {
+                self.metadata_received(app_name, metadata)?;
             },
             VideoDataReceived { stream_key, data, timestamp, .. } => {
                 self.multimedia_data_received(stream_key, timestamp, Media::H264(data))?;
@@ -232,8 +232,27 @@ impl Handler {
         Ok(())
     }
 
-    fn metadata_received(&mut self, app_name: String, stream_key: String, metadata: StreamMetadata) -> Result<()> {
+    fn metadata_received(&mut self, app_name: String, metadata: StreamMetadata) -> Result<()> {
         debug!("Received stream metadata for app '{}'", app_name);
+
+        let mut streams = self.shared.streams.write();
+        if let Some(stream) = streams.get_mut(&app_name) {
+            stream.set_metadata(metadata.clone());
+            let mut clients = self.shared.clients.lock();
+
+            for client_id in &stream.watchers {
+                let client = clients.get_mut(client_id).unwrap();
+
+                if let Some(watched_stream) = client.watched_stream() {
+                    let packet = client.session
+                        .send_metadata(watched_stream, Rc::new(metadata.clone()))
+                        .map_err(|_| Error::SessionError("Failed to send metadata".to_string()))?;
+
+                    self.results.push_back(EventResult::Outbound(self.peer_id, packet));
+                }
+            }
+        }
+
         Ok(())
     }
 

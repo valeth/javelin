@@ -59,6 +59,13 @@ impl Client {
         self.state = ClientState::Watching(app_name, stream_id);
     }
 
+    pub fn watched_stream(&self) -> Option<u32> {
+        match self.state {
+            ClientState::Watching(_, stream_id) => Some(stream_id),
+            _ => None,
+        }
+    }
+
     pub fn watched_app_name(&self) -> Option<String> {
         match self.state {
             ClientState::Watching(ref app_name, _) => Some(app_name.clone()),
