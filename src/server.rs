@@ -5,7 +5,7 @@ use tokio::{
     prelude::*,
     net::TcpListener
 };
-use peer;
+use peer::{Peer, BytesStream};
 
 
 pub struct Server {
@@ -26,9 +26,10 @@ impl Server {
             .for_each(move |(stream, id)| {
                 info!("New client connection: {}", id);
 
-                let _bytes_stream = peer::BytesStream::new(stream);
+                let bytes_stream = BytesStream::new(stream);
+                let peer = Peer::new(id, bytes_stream);
 
-                Ok(())
+                tokio::spawn(peer.map_err(|err| error!("{:?}", err)))
             });
 
         info!("Starting up Javelin RTMP server");
