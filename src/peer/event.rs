@@ -258,6 +258,52 @@ impl Handler {
 
     fn multimedia_data_received(&mut self, stream_key: String, timestamp: RtmpTimestamp, media: Media) -> Result<()> {
         // debug!("Received video data for stream with key {}", stream_key);
+
+        let app_name = self.shared
+            .app_name_from_stream_key(stream_key)
+            .ok_or(Error::SessionError("No app for stream key".to_string()))?;
+
+        let mut streams = self.shared.streams.write();
+        if let Some(stream) = streams.get_mut(&app_name) {
+            match &media {
+                Media::AAC(ref data) if media.is_sequence_header() => {
+                    stream.audio_seq_header = Some(data.clone());
+                },
+                Media::H264(ref data) if media.is_sequence_header() => {
+                    stream.video_seq_header = Some(data.clone());
+                },
+                _ => (),
+            }
+
+            for client_id in &stream.watchers {
+                let mut clients = self.shared.clients.lock();
+                let mut client = match clients.get_mut(&client_id) {
+                    Some(client) => client,
+                    None => continue,
+                };
+
+                if !(client.received_video_keyframe || media.is_sendable()) {
+                    continue;
+                }
+
+                if let Some(active_stream) = client.watched_stream() {
+                    let packet = match &media {
+                        Media::AAC(bytes) => {
+                            client.session.send_audio_data(active_stream, bytes.clone(), timestamp.clone(), true)?
+                        }
+                        Media::H264(ref bytes) => {
+                            if media.is_keyframe() {
+                                client.received_video_keyframe = true;
+                            }
+                            client.session.send_video_data(active_stream, bytes.clone(), timestamp.clone(), true)?
+                        },
+                    };
+
+                    self.results.push_back(EventResult::Outbound(*client_id, packet));
+                }
+            }
+        }
+
         Ok(())
     }
 }

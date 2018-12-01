@@ -24,4 +24,10 @@ impl Shared {
             app_names: Arc::new(RwLock::new(HashMap::new())),
         }
     }
+
+    pub fn app_name_from_stream_key(&self, stream_key: String) -> Option<String> {
+        let app_names = self.app_names.read();
+        let app_name = app_names.get(&stream_key)?;
+        Some(app_name.to_string())
+    }
 }
