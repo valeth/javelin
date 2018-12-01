@@ -1,5 +1,7 @@
 mod bytes_stream;
 mod client;
+mod media;
+mod event;
 
 
 use futures::sync::mpsc;
@@ -12,13 +14,18 @@ use rtmp::{
         PeerType,
     },
 };
-use error::Error;
+use error::{Error, Result};
 use shared::Shared;
 pub use self::bytes_stream::BytesStream;
+pub use self::client::Client;
+use self::event::{
+    Handler as EventHandler,
+    EventResult,
+};
 
 
 type Receiver = mpsc::UnboundedReceiver<Bytes>;
-type Sender = mpsc::UnboundedSender<Bytes>;
+pub type Sender = mpsc::UnboundedSender<Bytes>;
 
 
 /// Represents an incoming connection
@@ -29,6 +36,7 @@ pub struct Peer {
     receiver: Receiver,
     shared: Shared,
     buffer: BytesMut,
+    event_handler: EventHandler,
     handshake_completed: bool,
     handshake: RtmpHandshake,
 }
@@ -36,10 +44,12 @@ pub struct Peer {
 impl Peer {
     pub fn new(id: u64, bytes_stream: BytesStream, shared: Shared) -> Self {
         let (sender, receiver) = mpsc::unbounded();
+        let event_handler = EventHandler::new(id, shared.clone())
+            .expect(&format!("Failed to create event handler for peer {}", id));
 
         {
             let mut peers = shared.peers.write();
-            peers.insert(id);
+            peers.insert(id, sender.clone());
         }
 
         Self {
@@ -49,6 +59,7 @@ impl Peer {
             receiver,
             shared,
             buffer: BytesMut::with_capacity(4096),
+            event_handler,
             handshake_completed: false,
             handshake: RtmpHandshake::new(PeerType::Server),
         }
@@ -86,6 +97,25 @@ impl Peer {
 
         Ok(Async::Ready(()))
     }
+
+    fn handle_incoming_bytes(&mut self) -> Result<()> {
+        let data = self.buffer.take();
+
+        let event_results = self.event_handler.handle(&data)?;
+
+        for result in event_results {
+            match result {
+                EventResult::Outbound(target_peer_id, packet) => {
+                    let peers = self.shared.peers.read();
+                    let peer = peers.get(&target_peer_id).unwrap();
+                    debug!("Packet from {} to {} with {:?} bytes", self.id, target_peer_id, packet.bytes.len());
+                    peer.unbounded_send(Bytes::from(packet.bytes)).unwrap();
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Drop for Peer {
@@ -112,7 +142,10 @@ impl Future for Peer {
                 debug!("Received {} bytes", data.len());
                 self.buffer.reserve(data.len());
                 self.buffer.put(data);
-                if !self.handshake_completed {
+
+                if self.handshake_completed {
+                    self.handle_incoming_bytes()?;
+                } else {
                     try_ready!(self.handle_handshake());
                 }
             },
