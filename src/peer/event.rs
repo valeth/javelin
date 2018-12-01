@@ -307,3 +307,10 @@ impl Handler {
         Ok(())
     }
 }
+
+impl Drop for Handler {
+    fn drop(&mut self) {
+        let mut clients = self.shared.clients.lock();
+        clients.remove(&self.peer_id);
+    }
+}
