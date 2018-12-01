@@ -8,7 +8,11 @@ extern crate tokio;
 extern crate rml_rtmp as rtmp;
 
 
+mod server;
+
+
 use simplelog::{Config, SimpleLogger, TermLogger, LevelFilter};
+use server::Server;
 
 
 macro_rules! init_logger {
@@ -21,5 +25,5 @@ fn main() {
         init_logger!(SimpleLogger).unwrap_or_else(|err|
             eprintln!("Failed to initialize logger: {}", err)));
 
-    debug!("Hello, world!");
+    Server::new("0.0.0.0:1935").start();
 }
