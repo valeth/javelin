@@ -1,0 +1,22 @@
+[package]
+authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com"]
+name = "javelin"
+description = "RTMP streaming server"
+keywords = ["rtmp", "streaming", "media"]
+license = "GPL-3.0"
+readme = "README.md"
+repository = "https://gitlab.com/valeth/javelin.git"
+version = "0.0.0"
+publish = false
+
+[dependencies]
+bytes = "^0.4"
+simplelog = "^0.5"
+parking_lot = "^0.7"
+futures = "^0.1"
+tokio = "^0.1"
+rml_rtmp = "^0.2"
+
+[dependencies.log]
+version = "^0.4"
+features = ["max_level_debug", "release_max_level_info"]

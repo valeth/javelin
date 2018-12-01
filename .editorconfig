@@ -1,0 +1,15 @@
+# for the sake of sanity
+
+# topmost editorconfig file
+root = true
+
+# always use Unix-style newlines,
+# use 4 spaces for indentation
+# and use UTF-8 encoding
+[*]
+indent_style = space
+end_of_line = lf
+indent_size = 4
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
