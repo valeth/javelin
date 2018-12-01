@@ -54,6 +54,11 @@ impl Client {
         }
     }
 
+    pub fn watch(&mut self, channel: &mut Channel, stream_id: u32, app_name: String) {
+        channel.add_watcher(self.peer_id);
+        self.state = ClientState::Watching(app_name, stream_id);
+    }
+
     pub fn watched_app_name(&self) -> Option<String> {
         match self.state {
             ClientState::Watching(ref app_name, _) => Some(app_name.clone()),

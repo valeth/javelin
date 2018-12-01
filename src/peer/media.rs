@@ -66,6 +66,10 @@ impl Channel {
         self.stream_key = Some(stream_key);
     }
 
+    pub fn add_watcher(&mut self, watcher_id: u64) {
+        self.watchers.insert(watcher_id);
+    }
+
     pub fn unpublish(&mut self) {
         self.publisher = None;
         self.stream_key = None;

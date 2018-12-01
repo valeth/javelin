@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    rc::Rc,
 };
 use shared::Shared;
 use rtmp::{
@@ -188,6 +189,46 @@ impl Handler {
 
     fn play_requested(&mut self, request_id: u32, app_name: String, stream_id: u32) -> Result<()> {
         info!("Client {} requested playback of app '{}'", self.peer_id, app_name);
+
+        let results = {
+            let mut clients = self.shared.clients.lock();
+            let client = clients.get_mut(&self.peer_id).unwrap();
+
+            {
+                let mut streams = self.shared.streams.write();
+                let mut stream = streams.entry(app_name.clone()).or_insert(Channel::new());
+                client.watch(&mut stream, stream_id, app_name.clone());
+            }
+
+            client.accept_request(request_id)?
+        };
+
+        {
+            let mut clients = self.shared.clients.lock();
+            let client = clients.get_mut(&self.peer_id).unwrap();
+            let streams = self.shared.streams.read();
+
+            if let Some(ref metadata) = streams.get(&app_name).unwrap().metadata {
+                let packet = client.session.send_metadata(stream_id, Rc::new(metadata.clone()))
+                    .map_err(|_| Error::SessionError("Failed to send metadata".to_string()))?;
+                self.results.push_back(EventResult::Outbound(self.peer_id, packet));
+            }
+
+            if let Some(ref v_seq_h) = streams.get(&app_name).unwrap().video_seq_header {
+                let packet = client.session.send_video_data(stream_id, v_seq_h.clone(), RtmpTimestamp::new(0), false)
+                    .map_err(|_| Error::SessionError("Failed to send video data".to_string()))?;
+                self.results.push_back(EventResult::Outbound(self.peer_id, packet));
+            }
+
+            if let Some(ref a_seq_h) = streams.get(&app_name).unwrap().audio_seq_header {
+                let packet = client.session.send_audio_data(stream_id, a_seq_h.clone(), RtmpTimestamp::new(0), false)
+                    .map_err(|_| Error::SessionError("Failed to send audio data".to_string()))?;
+                self.results.push_back(EventResult::Outbound(self.peer_id, packet));
+            }
+        }
+
+        self.handle_server_session_results(results)?;
+
         Ok(())
     }
 
