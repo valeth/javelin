@@ -65,4 +65,12 @@ impl Channel {
         self.publisher = Some(publisher_id);
         self.stream_key = Some(stream_key);
     }
+
+    pub fn unpublish(&mut self) {
+        self.publisher = None;
+        self.stream_key = None;
+        self.metadata = None;
+        self.video_seq_header = None;
+        self.audio_seq_header = None;
+    }
 }

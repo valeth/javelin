@@ -171,6 +171,18 @@ impl Handler {
 
     fn publish_stream_finished(&mut self, app_name: String, stream_key: String) -> Result<()> {
         info!("Publishing of app '{}' finished", app_name);
+
+        {
+            let mut streams = self.shared.streams.write();
+            let stream = streams.get_mut(&app_name).unwrap();
+            stream.unpublish();
+        }
+
+        {
+            let mut app_names = self.shared.app_names.write();
+            app_names.remove(&stream_key);
+        }
+
         Ok(())
     }
 

@@ -46,4 +46,18 @@ impl Client {
         channel.set_publisher(self.peer_id, stream_key.clone());
         self.state = ClientState::Publishing(app_name, stream_key);
     }
+
+    pub fn publishing_app_name(&self) -> Option<String> {
+        match self.state {
+            ClientState::Publishing(ref app_name, _) => Some(app_name.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn watched_app_name(&self) -> Option<String> {
+        match self.state {
+            ClientState::Watching(ref app_name, _) => Some(app_name.clone()),
+            _ => None,
+        }
+    }
 }

@@ -120,6 +120,23 @@ impl Peer {
 
 impl Drop for Peer {
     fn drop(&mut self) {
+        {
+            let clients = self.shared.clients.lock();
+            let client = clients.get(&self.id).unwrap();
+
+            if let Some(app_name) = client.publishing_app_name() {
+                let mut streams = self.shared.streams.write();
+                let stream = streams.get_mut(&app_name).unwrap();
+                stream.unpublish();
+            }
+
+            if let Some(app_name) = client.watched_app_name() {
+                let mut streams = self.shared.streams.write();
+                let stream = streams.get_mut(&app_name).unwrap();
+                stream.watchers.remove(&self.id);
+            }
+        }
+
         let mut peers = self.shared.peers.write();
         peers.remove(&self.id);
     }
