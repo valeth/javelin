@@ -8,6 +8,7 @@ pub type Result<T> = result::Result<T, Error>;
 pub enum Error {
     IoError(io::Error),
     Custom(String),
+    HandshakeFailed,
 }
 
 impl From<io::Error> for Error {

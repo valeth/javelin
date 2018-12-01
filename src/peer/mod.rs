@@ -3,7 +3,14 @@ mod bytes_stream;
 
 use futures::sync::mpsc;
 use tokio::prelude::*;
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut, BufMut};
+use rtmp::{
+    handshake::{
+        Handshake as RtmpHandshake,
+        HandshakeProcessResult,
+        PeerType,
+    },
+};
 use error::Error;
 use shared::Shared;
 pub use self::bytes_stream::BytesStream;
@@ -20,6 +27,9 @@ pub struct Peer {
     sender: Sender,
     receiver: Receiver,
     shared: Shared,
+    buffer: BytesMut,
+    handshake_completed: bool,
+    handshake: RtmpHandshake,
 }
 
 impl Peer {
@@ -37,7 +47,43 @@ impl Peer {
             sender,
             receiver,
             shared,
+            buffer: BytesMut::with_capacity(4096),
+            handshake_completed: false,
+            handshake: RtmpHandshake::new(PeerType::Server),
         }
+    }
+
+    fn handle_handshake(&mut self) -> Poll<(), Error> {
+        use self::HandshakeProcessResult as HandshakeState;
+
+        let data = self.buffer.take().freeze();
+
+        let response_bytes = match self.handshake.process_bytes(&data) {
+            Err(why) => {
+                error!("Handshake for peer {} failed: {}", self.id, why);
+                return Err(Error::HandshakeFailed);
+            },
+            Ok(HandshakeState::InProgress { response_bytes }) => {
+                debug!("Handshake pending...");
+                response_bytes
+            },
+            Ok(HandshakeState::Completed { response_bytes, remaining_bytes }) => {
+                info!("Handshake for client {} successful", self.id);
+                debug!("Remaining bytes after handshake: {}", remaining_bytes.len());
+                self.handshake_completed = true;
+                self.buffer.reserve(remaining_bytes.len());
+                self.buffer.put(remaining_bytes);
+                response_bytes
+            }
+        };
+
+        if response_bytes.len() > 0 {
+            self.sender
+                .unbounded_send(Bytes::from(response_bytes))
+                .map_err(|_| Error::HandshakeFailed)?
+        }
+
+        Ok(Async::Ready(()))
     }
 }
 
@@ -63,6 +109,11 @@ impl Future for Peer {
         match try_ready!(self.bytes_stream.poll()) {
             Some(data) => {
                 debug!("Received {} bytes", data.len());
+                self.buffer.reserve(data.len());
+                self.buffer.put(data);
+                if !self.handshake_completed {
+                    try_ready!(self.handle_handshake());
+                }
             },
             None => {
                 debug!("Closing connection: {}", self.id);
