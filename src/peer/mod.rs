@@ -139,6 +139,8 @@ impl Drop for Peer {
 
         let mut peers = self.shared.peers.write();
         peers.remove(&self.id);
+
+        info!("Closing connection: {}", self.id);
     }
 }
 
@@ -167,7 +169,6 @@ impl Future for Peer {
                 }
             },
             None => {
-                debug!("Closing connection: {}", self.id);
                 return Ok(Async::Ready(()));
             },
         }
