@@ -4,6 +4,7 @@ use rtmp::sessions::{
     ServerSessionResult
 };
 use error::{Error, Result};
+use peer::media::Channel;
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,5 +40,10 @@ impl Client {
 
     pub fn accept_request(&mut self, request_id: u32) -> Result<Vec<ServerSessionResult>> {
         self.session.accept_request(request_id).map_err(|_| Error::RequestError)
+    }
+
+    pub fn publish(&mut self, channel: &mut Channel, app_name: String, stream_key: String) {
+        channel.set_publisher(self.peer_id, stream_key.clone());
+        self.state = ClientState::Publishing(app_name, stream_key);
     }
 }

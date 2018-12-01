@@ -1,6 +1,6 @@
 mod bytes_stream;
 mod client;
-mod media;
+pub mod media;
 mod event;
 
 

@@ -11,9 +11,9 @@ use rtmp::{
     chunk_io::Packet,
     time::RtmpTimestamp
 };
-use error::Result;
+use error::{Error, Result};
 use peer::Client;
-use super::media::Media;
+use super::media::{Media, Channel};
 
 
 #[derive(Debug)]
@@ -130,6 +130,42 @@ impl Handler {
 
     fn publish_requested(&mut self, request_id: u32, app_name: String, stream_key: String) -> Result<()> {
         info!("Client {} requested publishing to app '{}' using stream key {}", self.peer_id, app_name, stream_key);
+
+        {
+            let streams = self.shared.streams.read();
+            match streams.get(&app_name) {
+                Some(stream) => {
+                    match stream.has_publisher() {
+                        false => (),
+                        true => return Err(Error::from(format!("{} is already being published to", app_name))),
+                    }
+                },
+                None => (),
+            }
+        }
+
+        let result = {
+            let mut clients = self.shared.clients.lock();
+            let mut client = clients.get_mut(&self.peer_id).unwrap();
+            let mut streams = self.shared.streams.write();
+            let mut stream = streams.entry(app_name.clone()).or_insert(Channel::new());
+            client.publish(&mut stream, app_name.clone(), stream_key.clone());
+            client.accept_request(request_id)
+        };
+
+        {
+            let mut app_names = self.shared.app_names.write();
+            app_names.insert(stream_key, app_name);
+        }
+
+        match result {
+            Err(why) => {
+                error!("Error while accepting publishing request: {:?}", why);
+                return Err(Error::SessionError("Publish request failed".to_string()));
+            },
+            Ok(results) => self.handle_server_session_results(results)?
+        }
+
         Ok(())
     }
 

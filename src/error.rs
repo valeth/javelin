@@ -12,6 +12,7 @@ pub enum Error {
     Custom(String),
     HandshakeFailed,
     RequestError,
+    SessionError(String),
 }
 
 impl From<io::Error> for Error {
