@@ -1,4 +1,5 @@
 use std::{io, result};
+use rtmp::sessions::ServerSessionError as RtmpSessionError;
 
 
 pub type Result<T> = result::Result<T, Error>;
@@ -7,6 +8,7 @@ pub type Result<T> = result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     IoError(io::Error),
+    RtmpSessionError(RtmpSessionError),
     Custom(String),
     HandshakeFailed,
 }
@@ -14,6 +16,12 @@ pub enum Error {
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
         Error::IoError(err)
+    }
+}
+
+impl From<RtmpSessionError> for Error {
+    fn from(err: RtmpSessionError) -> Self {
+        Error::RtmpSessionError(err)
     }
 }
 

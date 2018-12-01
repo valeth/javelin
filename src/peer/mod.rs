@@ -1,4 +1,5 @@
 mod bytes_stream;
+mod client;
 
 
 use futures::sync::mpsc;
