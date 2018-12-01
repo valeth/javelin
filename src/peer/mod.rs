@@ -5,6 +5,7 @@ use futures::sync::mpsc;
 use tokio::prelude::*;
 use bytes::Bytes;
 use error::Error;
+use shared::Shared;
 pub use self::bytes_stream::BytesStream;
 
 
@@ -18,18 +19,32 @@ pub struct Peer {
     bytes_stream: BytesStream,
     sender: Sender,
     receiver: Receiver,
+    shared: Shared,
 }
 
 impl Peer {
-    pub fn new(id: u64, bytes_stream: BytesStream) -> Self {
+    pub fn new(id: u64, bytes_stream: BytesStream, shared: Shared) -> Self {
         let (sender, receiver) = mpsc::unbounded();
+
+        {
+            let mut peers = shared.peers.write();
+            peers.insert(id);
+        }
 
         Self {
             id,
             bytes_stream,
             sender,
             receiver,
+            shared,
         }
+    }
+}
+
+impl Drop for Peer {
+    fn drop(&mut self) {
+        let mut peers = self.shared.peers.write();
+        peers.remove(&self.id);
     }
 }
 

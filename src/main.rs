@@ -1,12 +1,14 @@
 extern crate bytes;
 #[macro_use] extern crate log;
 extern crate simplelog;
+extern crate parking_lot;
 #[macro_use] extern crate futures;
 extern crate tokio;
 extern crate rml_rtmp as rtmp;
 
 
 mod error;
+mod shared;
 mod peer;
 mod server;
 
