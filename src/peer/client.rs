@@ -3,7 +3,7 @@ use rtmp::sessions::{
     ServerSessionConfig,
     ServerSessionResult
 };
-use error::Result;
+use error::{Error, Result};
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,5 +35,9 @@ impl Client {
         };
 
         Ok((this, results))
+    }
+
+    pub fn accept_request(&mut self, request_id: u32) -> Result<Vec<ServerSessionResult>> {
+        self.session.accept_request(request_id).map_err(|_| Error::RequestError)
     }
 }

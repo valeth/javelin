@@ -116,6 +116,15 @@ impl Handler {
 
     fn connection_requested(&mut self, request_id: u32, app_name: String) -> Result<()> {
         info!("Connection request from client {} for app '{}'", self.peer_id, app_name);
+
+        let results = {
+            let mut clients = self.shared.clients.lock();
+            let client = clients.get_mut(&self.peer_id).unwrap();
+            client.accept_request(request_id)?
+        };
+
+        self.handle_server_session_results(results)?;
+
         Ok(())
     }
 

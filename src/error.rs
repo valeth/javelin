@@ -11,6 +11,7 @@ pub enum Error {
     RtmpSessionError(RtmpSessionError),
     Custom(String),
     HandshakeFailed,
+    RequestError,
 }
 
 impl From<io::Error> for Error {
