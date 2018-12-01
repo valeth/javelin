@@ -1,5 +1,3 @@
-#![allow(unused_imports)] /// TODO: remove this
-
 extern crate bytes;
 #[macro_use] extern crate log;
 extern crate simplelog;
@@ -8,6 +6,8 @@ extern crate tokio;
 extern crate rml_rtmp as rtmp;
 
 
+mod error;
+mod peer;
 mod server;
 
 

@@ -5,6 +5,7 @@ use tokio::{
     prelude::*,
     net::TcpListener
 };
+use peer;
 
 
 pub struct Server {
@@ -22,8 +23,11 @@ impl Server {
         let srv = self.listener.incoming()
             .zip(stream::iter_ok(0u64..))
             .map_err(|err| error!("{}", err))
-            .for_each(move |(_stream, id)| {
+            .for_each(move |(stream, id)| {
                 info!("New client connection: {}", id);
+
+                let _bytes_stream = peer::BytesStream::new(stream);
+
                 Ok(())
             });
 
