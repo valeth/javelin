@@ -1,10 +1,12 @@
 use std::{
     net::SocketAddr,
+    io::ErrorKind as IoErrorKind,
 };
 use tokio::{
     prelude::*,
     net::TcpListener
 };
+use error::Error;
 use shared::Shared;
 use peer::{Peer, BytesStream};
 
@@ -31,7 +33,12 @@ impl Server {
 
                 let bytes_stream = BytesStream::new(stream);
                 let peer = Peer::new(id, bytes_stream, shared.clone())
-                    .map_err(|err| error!("{:?}", err));
+                    .map_err(|err| {
+                        match err {
+                            Error::IoError(ref err) if err.kind() == IoErrorKind::ConnectionReset => (),
+                            _ => error!("{:?}", err)
+                        }
+                    });
 
                 tokio::spawn(peer)
             });

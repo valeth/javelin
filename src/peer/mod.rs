@@ -37,6 +37,7 @@ pub struct Peer {
     shared: Shared,
     buffer: BytesMut,
     event_handler: EventHandler,
+    disconnecting: bool,
     handshake_completed: bool,
     handshake: RtmpHandshake,
 }
@@ -61,6 +62,7 @@ impl Peer {
             buffer: BytesMut::with_capacity(4096),
             event_handler,
             handshake_completed: false,
+            disconnecting: false,
             handshake: RtmpHandshake::new(PeerType::Server),
         }
     }
@@ -108,8 +110,12 @@ impl Peer {
                 EventResult::Outbound(target_peer_id, packet) => {
                     let peers = self.shared.peers.read();
                     let peer = peers.get(&target_peer_id).unwrap();
-                    debug!("Packet from {} to {} with {:?} bytes", self.id, target_peer_id, packet.bytes.len());
+                    // debug!("Packet from {} to {} with {:?} bytes", self.id, target_peer_id, packet.bytes.len());
                     peer.unbounded_send(Bytes::from(packet.bytes)).unwrap();
+                },
+                EventResult::Disconnect => {
+                    self.disconnecting = true;
+                    break;
                 }
             }
         }
@@ -158,7 +164,6 @@ impl Future for Peer {
 
         match try_ready!(self.bytes_stream.poll()) {
             Some(data) => {
-                debug!("Received {} bytes", data.len());
                 self.buffer.reserve(data.len());
                 self.buffer.put(data);
 
@@ -173,6 +178,10 @@ impl Future for Peer {
             },
         }
 
-        Ok(Async::NotReady)
+        if self.disconnecting {
+            Ok(Async::Ready(()))
+        } else {
+            Ok(Async::NotReady)
+        }
     }
 }

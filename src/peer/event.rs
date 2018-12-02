@@ -20,6 +20,7 @@ use super::media::{Media, Channel};
 #[derive(Debug)]
 pub enum EventResult {
     Outbound(u64, Packet),
+    Disconnect,
 }
 
 
@@ -105,7 +106,7 @@ impl Handler {
             },
             PublishStreamFinished { app_name, stream_key } => {
                 self.publish_stream_finished(app_name, stream_key)?;
-            }
+            },
             _ => {
                 debug!("Event: {:?}", event);
             }
@@ -113,7 +114,6 @@ impl Handler {
 
         Ok(())
     }
-
 
     fn connection_requested(&mut self, request_id: u32, app_name: String) -> Result<()> {
         info!("Connection request from client {} for app '{}'", self.peer_id, app_name);
@@ -183,6 +183,8 @@ impl Handler {
             let mut app_names = self.shared.app_names.write();
             app_names.remove(&stream_key);
         }
+
+        self.results.push_back(EventResult::Disconnect);
 
         Ok(())
     }
