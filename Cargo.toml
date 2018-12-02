@@ -6,7 +6,7 @@ keywords = ["rtmp", "streaming", "media"]
 license = "GPL-3.0"
 readme = "README.md"
 repository = "https://gitlab.com/valeth/javelin.git"
-version = "0.2.0"
+version = "0.2.1"
 publish = false
 
 [dependencies]
