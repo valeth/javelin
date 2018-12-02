@@ -23,13 +23,17 @@ pub struct TlsConfig {
 #[cfg(feature = "tls")]
 impl TlsConfig {
     pub fn new(args: &ArgMatches) -> Self {
-        let cert_path = args.value_of("cert")
-            .map(|v| Some(PathBuf::from(v)))
-            .unwrap_or(None);
-        let cert_password = Self::cert_password();
         let enabled = !args.is_present("no_tls");
 
-        Self { cert_path, cert_password, enabled }
+        if enabled {
+            let cert_path = args.value_of("cert")
+                .map(|v| Some(PathBuf::from(v)))
+                .unwrap_or(None);
+            let cert_password = Self::cert_password();
+            Self { cert_path, cert_password, enabled }
+        } else {
+            Self { cert_path: None, cert_password: "".to_string(), enabled }
+        }
     }
 
     fn cert_password() -> String {
