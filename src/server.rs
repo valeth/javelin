@@ -12,6 +12,7 @@ use peer::{Peer, BytesStream};
 
 
 pub struct Server {
+    addr: SocketAddr,
     listener: TcpListener,
 }
 
@@ -19,7 +20,7 @@ impl Server {
     pub fn new<S: Into<String>>(addr: S) -> Self {
         let addr: SocketAddr = addr.into().parse().expect("Invalid socket address");
         let listener = TcpListener::bind(&addr).expect("Failed to bind TCP listener");
-        Self { listener }
+        Self { addr, listener }
     }
 
     pub fn start(self) {
@@ -43,7 +44,7 @@ impl Server {
                 tokio::spawn(peer)
             });
 
-        info!("Starting up Javelin RTMP server");
+        info!("Starting up Javelin RTMP server on {}", self.addr);
 
         tokio::run(srv);
     }
