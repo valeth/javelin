@@ -5,10 +5,12 @@ use std::{
 use parking_lot::{RwLock, Mutex};
 use peer::{Client, Sender};
 use peer::media::Channel;
+use config::Config;
 
 
 #[derive(Clone)]
 pub struct Shared {
+    pub config: Arc<RwLock<Config>>,
     pub peers: Arc<RwLock<HashMap<u64, Sender>>>,
     pub clients: Arc<Mutex<HashMap<u64, Client>>>,
     pub streams: Arc<RwLock<HashMap<String, Channel>>>,
@@ -18,6 +20,7 @@ pub struct Shared {
 impl Shared {
     pub fn new() -> Self {
         Self {
+            config: Arc::new(RwLock::new(Config::new())),
             peers: Arc::new(RwLock::new(HashMap::new())),
             clients: Arc::new(Mutex::new(HashMap::new())),
             streams: Arc::new(RwLock::new(HashMap::new())),

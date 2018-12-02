@@ -29,9 +29,11 @@ pub type Sender = mpsc::UnboundedSender<Bytes>;
 
 
 /// Represents an incoming connection
-pub struct Peer {
+pub struct Peer<S>
+    where S: AsyncRead + AsyncWrite
+{
     id: u64,
-    bytes_stream: BytesStream,
+    bytes_stream: BytesStream<S>,
     sender: Sender,
     receiver: Receiver,
     shared: Shared,
@@ -42,8 +44,10 @@ pub struct Peer {
     handshake: RtmpHandshake,
 }
 
-impl Peer {
-    pub fn new(id: u64, bytes_stream: BytesStream, shared: Shared) -> Self {
+impl<S> Peer<S>
+    where S: AsyncRead + AsyncWrite
+{
+    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared) -> Self {
         let (sender, receiver) = mpsc::unbounded();
         let event_handler = EventHandler::new(id, shared.clone())
             .expect(&format!("Failed to create event handler for peer {}", id));
@@ -124,7 +128,9 @@ impl Peer {
     }
 }
 
-impl Drop for Peer {
+impl<S> Drop for Peer<S>
+    where S: AsyncRead + AsyncWrite
+{
     fn drop(&mut self) {
         {
             let clients = self.shared.clients.lock();
@@ -150,7 +156,9 @@ impl Drop for Peer {
     }
 }
 
-impl Future for Peer {
+impl<S> Future for Peer<S>
+    where S: AsyncRead + AsyncWrite
+{
     type Item = ();
     type Error = Error;
 

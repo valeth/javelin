@@ -7,9 +7,15 @@ extern crate tokio;
 extern crate rml_rtmp as rtmp;
 extern crate clap;
 
+#[cfg(feature = "tls")]
+extern crate native_tls;
+#[cfg(feature = "tls")]
+extern crate tokio_tls;
+
 
 mod error;
 mod shared;
+mod config;
 mod peer;
 mod server;
 mod args;
@@ -25,14 +31,9 @@ macro_rules! init_logger {
 
 
 fn main() {
-    let matches = args::build_args();
-
     init_logger!(TermLogger).unwrap_or_else(|_|
         init_logger!(SimpleLogger).unwrap_or_else(|err|
             eprintln!("Failed to initialize logger: {}", err)));
 
-    let host = matches.value_of("bind").unwrap_or("0.0.0.0");
-    let port = matches.value_of("port").unwrap_or("1935");
-
-    Server::new(format!("{}:{}", host, port)).start();
+    Server::new().start();
 }

@@ -1,20 +1,24 @@
 use tokio::{
     prelude::*,
-    net::TcpStream,
     io,
 };
 use bytes::{Bytes, BytesMut, BufMut};
 use error::Error;
 
 
-pub struct BytesStream {
-    socket: TcpStream,
+pub struct BytesStream<S>
+    where S: AsyncRead + AsyncWrite
+{
+    socket: S,
     buf_in: BytesMut,
     buf_out: BytesMut,
 }
 
-impl BytesStream {
-    pub fn new(socket: TcpStream) -> Self {
+impl<S> BytesStream<S>
+    where S: AsyncRead + AsyncWrite
+{
+    pub fn new(socket: S) -> Self
+    {
         Self {
             socket,
             buf_in: BytesMut::new(),
@@ -50,7 +54,9 @@ impl BytesStream {
     }
 }
 
-impl Stream for BytesStream {
+impl<S> Stream for BytesStream<S>
+    where S: AsyncRead + AsyncWrite
+{
     type Item = Bytes;
     type Error = Error;
 

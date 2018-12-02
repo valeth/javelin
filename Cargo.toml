@@ -21,3 +21,15 @@ clap = "~2.32"
 [dependencies.log]
 version = "^0.4"
 features = ["max_level_debug", "release_max_level_info"]
+
+[dependencies.native-tls]
+optional = true
+version = "0.2"
+
+[dependencies.tokio-tls]
+optional = true
+version = "0.2"
+
+[features]
+default = ["tls"]
+tls = ["native-tls", "tokio-tls"]
