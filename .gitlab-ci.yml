@@ -34,6 +34,7 @@ variables:
 
 .toolchain-nightly:
   extends: .read_cache
+  allow_failure: true
   before_script:
     - apt-get update
     - apt-get install -y --no-install-recommends ca-certificates libssl-dev libc6-dev pkg-config gcc
@@ -54,18 +55,23 @@ install-rust:
     - rustup install stable
     - rustup install nightly
 
-build-stable:
+build-stable-no-default-features:
   extends: .toolchain-stable
   stage: build
   script:
-    - cargo build
+    - cargo build --no-default-features
+
+build-stable-features-tls:
+  extends: .toolchain-stable
+  stage: build
+  script:
+    - cargo build --features "tls"
 
 build-nightly:
   extends: .toolchain-nightly
   stage: build
   script:
     - cargo build
-  allow_failure: true
 
 # crates_io:
 #   stage: publish
