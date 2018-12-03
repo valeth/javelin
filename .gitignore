@@ -1,4 +1,10 @@
 /target
 **/*.rs.bk
+
+# CI
+/.cargo
+/.rustup
+
+# Misc
 /cert*
 /.env*
