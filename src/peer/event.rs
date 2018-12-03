@@ -133,12 +133,21 @@ impl Handler {
         info!("Client {} requested publishing to app '{}' using stream key {}", self.peer_id, app_name, stream_key);
 
         {
+            let config = self.shared.config.read();
+            if stream_key.is_empty() || !config.permitted_stream_keys.contains(&stream_key) {
+                return Err(Error::SessionError(format!("Stream key '{}' is not permitted", stream_key)));
+            }
+        }
+
+        debug!("Stream key '{}' permitted", stream_key);
+
+        {
             let streams = self.shared.streams.read();
             match streams.get(&app_name) {
                 Some(stream) => {
                     match stream.has_publisher() {
                         false => (),
-                        true => return Err(Error::from(format!("{} is already being published to", app_name))),
+                        true => return Err(Error::SessionError(format!("App '{}' is already being published to", app_name))),
                     }
                 },
                 None => (),

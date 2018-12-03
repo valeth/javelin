@@ -16,6 +16,13 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
             .long("port")
             .value_name("PORT")
             .help("Port to listen on")
+            .takes_value(true))
+        .arg(Arg::with_name("permitted_stream_keys")
+            .short("k")
+            .long("permit-stream-key")
+            .value_name("KEY")
+            .help("Permit a stream key for publishing")
+            .multiple(true)
             .takes_value(true));
 
     args = if cfg!(feature = "tls") {
