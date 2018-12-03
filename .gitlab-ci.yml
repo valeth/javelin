@@ -73,7 +73,10 @@ build-nightly:
   script:
     - cargo build
 
-# crates_io:
-#   stage: publish
-#   only:
-#     - tags@valeth/javelin
+deploy-crates-io:
+  extends: .toolchain-stable
+  stage: publish
+  script:
+    - cargo publish --token $CRATES_IO_API_TOKEN
+  only:
+    - tags@valeth/javelin
