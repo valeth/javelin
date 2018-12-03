@@ -1,7 +1,9 @@
-use std::net::SocketAddr;
-#[cfg(feature = "tls")]
 use std::{
     collections::HashSet,
+    net::SocketAddr,
+};
+#[cfg(feature = "tls")]
+use std::{
     path::PathBuf,
     fs::File,
     io::Read,
