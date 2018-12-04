@@ -5,7 +5,7 @@ extern crate parking_lot;
 #[macro_use] extern crate futures;
 extern crate tokio;
 extern crate rml_rtmp as rtmp;
-extern crate clap;
+#[macro_use] extern crate clap;
 
 #[cfg(feature = "tls")]
 extern crate native_tls;

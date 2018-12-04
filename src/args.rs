@@ -1,10 +1,10 @@
 use clap::{Arg, App, ArgMatches};
 
 pub fn build_args<'a>() -> ArgMatches<'a> {
-    let mut args = App::new(capitalize(env!("CARGO_PKG_NAME")))
-        .version(env!("CARGO_PKG_VERSION"))
-        .author(env!("CARGO_PKG_AUTHORS"))
-        .about(env!("CARGO_PKG_DESCRIPTION"))
+    let mut args = App::new(capitalize(crate_name!()))
+        .version(crate_version!())
+        .author(crate_authors!("\n"))
+        .about(crate_description!())
         .arg(Arg::with_name("bind")
             .short("b")
             .long("bind")
