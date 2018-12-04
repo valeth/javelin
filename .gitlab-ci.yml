@@ -31,6 +31,11 @@ variables:
     - apt-get install -y --no-install-recommends ca-certificates libssl-dev libc6-dev pkg-config gcc
     - export PATH="$CARGO_HOME/bin:$PATH"
     - rustup default stable
+  only:
+    changes:
+      - Cargo.toml
+      - Cargo.lock
+      - src/**/*.rs
 
 .toolchain-nightly:
   extends: .read_cache
@@ -40,6 +45,11 @@ variables:
     - apt-get install -y --no-install-recommends ca-certificates libssl-dev libc6-dev pkg-config gcc
     - export PATH="$CARGO_HOME/bin:$PATH"
     - rustup default nightly
+  only:
+    changes:
+      - Cargo.toml
+      - Cargo.lock
+      - src/**/*.rs
 
 ####### Jobs #######
 
@@ -54,6 +64,11 @@ install-rust:
     - export PATH="$CARGO_HOME/bin:$PATH"
     - rustup install stable
     - rustup install nightly
+  only:
+    changes:
+      - Cargo.toml
+      - Cargo.lock
+      - src/**/*.rs
 
 build-stable-no-default-features:
   extends: .toolchain-stable
