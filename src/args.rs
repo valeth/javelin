@@ -1,4 +1,11 @@
-use clap::{Arg, App, ArgMatches};
+use clap::{
+    Arg, App, ArgMatches,
+    crate_name,
+    crate_version,
+    crate_authors,
+    crate_description,
+};
+
 
 pub fn build_args<'a>() -> ArgMatches<'a> {
     let mut args = App::new(capitalize(crate_name!()))

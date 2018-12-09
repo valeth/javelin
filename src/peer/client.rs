@@ -1,10 +1,12 @@
-use rtmp::sessions::{
+use rml_rtmp::sessions::{
     ServerSession,
     ServerSessionConfig,
     ServerSessionResult
 };
-use error::{Error, Result};
-use peer::media::Channel;
+use crate::{
+    error::{Error, Result},
+    peer::media::Channel,
+};
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]

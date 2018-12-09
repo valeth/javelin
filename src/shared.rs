@@ -3,9 +3,14 @@ use std::{
     sync::Arc,
 };
 use parking_lot::{RwLock, Mutex};
-use peer::{Client, Sender};
-use peer::media::Channel;
-use config::Config;
+use crate::{
+    peer::{
+        Client,
+        Sender,
+        media::Channel,
+    },
+    config::Config,
+};
 
 
 #[derive(Clone)]

@@ -2,8 +2,9 @@ use tokio::{
     prelude::*,
     io,
 };
+use futures::try_ready;
 use bytes::{Bytes, BytesMut, BufMut};
-use error::Error;
+use crate::error::Error;
 
 
 pub struct BytesStream<S>

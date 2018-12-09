@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use bytes::Bytes;
-use rtmp::sessions::StreamMetadata;
+use rml_rtmp::sessions::StreamMetadata;
 
 
 #[derive(Debug, PartialEq, Eq)]

@@ -2,8 +2,8 @@ use std::{
     collections::VecDeque,
     rc::Rc,
 };
-use shared::Shared;
-use rtmp::{
+use::log::{debug, error, info};
+use rml_rtmp::{
     sessions::{
         ServerSessionResult,
         ServerSessionEvent as Event,
@@ -12,9 +12,14 @@ use rtmp::{
     chunk_io::Packet,
     time::RtmpTimestamp
 };
-use error::{Error, Result};
-use peer::Client;
-use super::media::{Media, Channel};
+use crate::{
+    error::{Error, Result},
+    shared::Shared,
+    peer::{
+        Client,
+        media::{Media, Channel},
+    },
+};
 
 
 #[derive(Debug)]
@@ -156,7 +161,7 @@ impl Handler {
 
         let result = {
             let mut clients = self.shared.clients.lock();
-            let mut client = clients.get_mut(&self.peer_id).unwrap();
+            let client = clients.get_mut(&self.peer_id).unwrap();
             let mut streams = self.shared.streams.write();
             let mut stream = streams.entry(app_name.clone()).or_insert(Channel::new());
             client.publish(&mut stream, app_name.clone(), stream_key.clone());

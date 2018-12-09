@@ -1,5 +1,5 @@
 use std::{io, result};
-use rtmp::sessions::ServerSessionError as RtmpSessionError;
+use rml_rtmp::sessions::ServerSessionError as RtmpSessionError;
 
 
 pub type Result<T> = result::Result<T, Error>;

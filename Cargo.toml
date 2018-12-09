@@ -7,6 +7,7 @@ license = "GPL-3.0"
 readme = "README.md"
 repository = "https://gitlab.com/valeth/javelin.git"
 version = "0.2.3"
+edition = "2018"
 
 [dependencies]
 bytes = "^0.4"
