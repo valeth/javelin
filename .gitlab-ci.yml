@@ -3,6 +3,7 @@ image: "debian:stretch-slim"
 stages:
   - prepare
   - build
+  - test
   - publish
 
 variables:
@@ -87,6 +88,13 @@ build-nightly:
   stage: build
   script:
     - cargo build
+
+test-clippy:
+  extends: .toolchain-stable
+  stage: test
+  allow_failure: true
+  script:
+    - cargo clippy
 
 deploy-crates-io:
   extends: .toolchain-stable
