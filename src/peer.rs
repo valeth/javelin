@@ -58,7 +58,9 @@ impl<S> Peer<S>
     pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared) -> Self {
         let (sender, receiver) = mpsc::unbounded();
         let event_handler = EventHandler::new(id, shared.clone())
-            .expect(&format!("Failed to create event handler for peer {}", id));
+            .unwrap_or_else(|_| {
+                panic!("Failed to create event handler for peer {}", id)
+            });
 
         {
             let mut peers = shared.peers.write();
@@ -103,7 +105,7 @@ impl<S> Peer<S>
             }
         };
 
-        if response_bytes.len() > 0 {
+        if !response_bytes.is_empty() {
             self.sender
                 .unbounded_send(Bytes::from(response_bytes))
                 .map_err(|_| Error::HandshakeFailed)?

@@ -26,6 +26,7 @@ pub struct Client {
 }
 
 impl Client {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(peer_id: u64) -> Result<(Self, Vec<ServerSessionResult>)> {
         let session_config = ServerSessionConfig::new();
         let (session, results) = ServerSession::new(session_config)?;

@@ -49,7 +49,7 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
     args.get_matches()
 }
 
-fn capitalize<'a>(string: &'a str) -> String {
+fn capitalize(string: &str) -> String {
     string
         .chars()
         .enumerate()

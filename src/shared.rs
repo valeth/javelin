@@ -33,9 +33,9 @@ impl Shared {
         }
     }
 
-    pub fn app_name_from_stream_key(&self, stream_key: String) -> Option<String> {
+    pub fn app_name_from_stream_key(&self, stream_key: &str) -> Option<String> {
         let app_names = self.app_names.read();
-        let app_name = app_names.get(&stream_key)?;
+        let app_name = app_names.get(stream_key)?;
         Some(app_name.to_string())
     }
 }

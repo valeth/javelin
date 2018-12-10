@@ -36,6 +36,7 @@ pub struct Handler {
 }
 
 impl Handler {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(peer_id: u64, shared: Shared) -> Result<Self> {
         let results = {
             let mut clients = shared.clients.lock();
@@ -92,25 +93,25 @@ impl Handler {
 
         match event {
             ConnectionRequested { request_id, app_name } => {
-                self.connection_requested(request_id, app_name)?;
+                self.connection_requested(request_id, &app_name)?;
             },
             PublishStreamRequested { request_id, app_name, stream_key, .. } => {
                 self.publish_requested(request_id, app_name, stream_key)?;
             }
             PlayStreamRequested { request_id, app_name, stream_id, .. } => {
-                self.play_requested(request_id, app_name, stream_id)?;
+                self.play_requested(request_id, &app_name, stream_id)?;
             },
             StreamMetadataChanged { app_name, metadata, .. } => {
-                self.metadata_received(app_name, metadata)?;
+                self.metadata_received(&app_name, &metadata)?;
             },
             VideoDataReceived { stream_key, data, timestamp, .. } => {
-                self.multimedia_data_received(stream_key, timestamp, Media::H264(data))?;
+                self.multimedia_data_received(&stream_key, timestamp, &Media::H264(data))?;
             },
             AudioDataReceived { stream_key, data, timestamp, .. } => {
-                self.multimedia_data_received(stream_key, timestamp, Media::AAC(data))?;
+                self.multimedia_data_received(&stream_key, timestamp, &Media::AAC(data))?;
             },
             PublishStreamFinished { app_name, stream_key } => {
-                self.publish_stream_finished(app_name, stream_key)?;
+                self.publish_stream_finished(&app_name, &stream_key)?;
             },
             _ => {
                 debug!("Event: {:?}", event);
@@ -120,7 +121,7 @@ impl Handler {
         Ok(())
     }
 
-    fn connection_requested(&mut self, request_id: u32, app_name: String) -> Result<()> {
+    fn connection_requested(&mut self, request_id: u32, app_name: &str) -> Result<()> {
         info!("Connection request from client {} for app '{}'", self.peer_id, app_name);
 
         let results = {
@@ -148,14 +149,10 @@ impl Handler {
 
         {
             let streams = self.shared.streams.read();
-            match streams.get(&app_name) {
-                Some(stream) => {
-                    match stream.has_publisher() {
-                        false => (),
-                        true => return Err(Error::SessionError(format!("App '{}' is already being published to", app_name))),
-                    }
-                },
-                None => (),
+            if let Some(stream) = streams.get(&app_name) {
+                if stream.has_publisher() {
+                    return Err(Error::SessionError(format!("App '{}' is already being published to", app_name)));
+                }
             }
         }
 
@@ -163,7 +160,7 @@ impl Handler {
             let mut clients = self.shared.clients.lock();
             let client = clients.get_mut(&self.peer_id).unwrap();
             let mut streams = self.shared.streams.write();
-            let mut stream = streams.entry(app_name.clone()).or_insert(Channel::new());
+            let mut stream = streams.entry(app_name.clone()).or_insert_with(Channel::new);
             client.publish(&mut stream, app_name.clone(), stream_key.clone());
             client.accept_request(request_id)
         };
@@ -184,18 +181,18 @@ impl Handler {
         Ok(())
     }
 
-    fn publish_stream_finished(&mut self, app_name: String, stream_key: String) -> Result<()> {
+    fn publish_stream_finished(&mut self, app_name: &str, stream_key: &str) -> Result<()> {
         info!("Publishing of app '{}' finished", app_name);
 
         {
             let mut streams = self.shared.streams.write();
-            let stream = streams.get_mut(&app_name).unwrap();
+            let stream = streams.get_mut(app_name).unwrap();
             stream.unpublish();
         }
 
         {
             let mut app_names = self.shared.app_names.write();
-            app_names.remove(&stream_key);
+            app_names.remove(stream_key);
         }
 
         self.results.push_back(EventResult::Disconnect);
@@ -203,7 +200,7 @@ impl Handler {
         Ok(())
     }
 
-    fn play_requested(&mut self, request_id: u32, app_name: String, stream_id: u32) -> Result<()> {
+    fn play_requested(&mut self, request_id: u32, app_name: &str, stream_id: u32) -> Result<()> {
         info!("Client {} requested playback of app '{}'", self.peer_id, app_name);
 
         let results = {
@@ -212,8 +209,8 @@ impl Handler {
 
             {
                 let mut streams = self.shared.streams.write();
-                let mut stream = streams.entry(app_name.clone()).or_insert(Channel::new());
-                client.watch(&mut stream, stream_id, app_name.clone());
+                let mut stream = streams.entry(app_name.to_string()).or_insert_with(Channel::new);
+                client.watch(&mut stream, stream_id, app_name.to_string());
             }
 
             client.accept_request(request_id)?
@@ -224,19 +221,19 @@ impl Handler {
             let client = clients.get_mut(&self.peer_id).unwrap();
             let streams = self.shared.streams.read();
 
-            if let Some(ref metadata) = streams.get(&app_name).unwrap().metadata {
+            if let Some(ref metadata) = streams.get(app_name).unwrap().metadata {
                 let packet = client.session.send_metadata(stream_id, Rc::new(metadata.clone()))
                     .map_err(|_| Error::SessionError("Failed to send metadata".to_string()))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
-            if let Some(ref v_seq_h) = streams.get(&app_name).unwrap().video_seq_header {
+            if let Some(ref v_seq_h) = streams.get(app_name).unwrap().video_seq_header {
                 let packet = client.session.send_video_data(stream_id, v_seq_h.clone(), RtmpTimestamp::new(0), false)
                     .map_err(|_| Error::SessionError("Failed to send video data".to_string()))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
-            if let Some(ref a_seq_h) = streams.get(&app_name).unwrap().audio_seq_header {
+            if let Some(ref a_seq_h) = streams.get(app_name).unwrap().audio_seq_header {
                 let packet = client.session.send_audio_data(stream_id, a_seq_h.clone(), RtmpTimestamp::new(0), false)
                     .map_err(|_| Error::SessionError("Failed to send audio data".to_string()))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
@@ -248,11 +245,11 @@ impl Handler {
         Ok(())
     }
 
-    fn metadata_received(&mut self, app_name: String, metadata: StreamMetadata) -> Result<()> {
+    fn metadata_received(&mut self, app_name: &str, metadata: &StreamMetadata) -> Result<()> {
         debug!("Received stream metadata for app '{}'", app_name);
 
         let mut streams = self.shared.streams.write();
-        if let Some(stream) = streams.get_mut(&app_name) {
+        if let Some(stream) = streams.get_mut(app_name) {
             stream.set_metadata(metadata.clone());
             let mut clients = self.shared.clients.lock();
 
@@ -272,12 +269,14 @@ impl Handler {
         Ok(())
     }
 
-    fn multimedia_data_received(&mut self, stream_key: String, timestamp: RtmpTimestamp, media: Media) -> Result<()> {
+    fn multimedia_data_received(&mut self, stream_key: &str, timestamp: RtmpTimestamp, media: &Media) -> Result<()> {
         // debug!("Received video data for stream with key {}", stream_key);
 
         let app_name = self.shared
-            .app_name_from_stream_key(stream_key)
-            .ok_or(Error::SessionError("No app for stream key".to_string()))?;
+            .app_name_from_stream_key(&stream_key)
+            .ok_or_else(|| {
+                Error::SessionError("No app for stream key".to_string())
+            })?;
 
         let mut streams = self.shared.streams.write();
         if let Some(stream) = streams.get_mut(&app_name) {
@@ -305,13 +304,13 @@ impl Handler {
                 if let Some(active_stream) = client.watched_stream() {
                     let packet = match &media {
                         Media::AAC(bytes) => {
-                            client.session.send_audio_data(active_stream, bytes.clone(), timestamp.clone(), true)?
+                            client.session.send_audio_data(active_stream, bytes.clone(), timestamp, true)?
                         }
                         Media::H264(ref bytes) => {
                             if media.is_keyframe() {
                                 client.received_video_keyframe = true;
                             }
-                            client.session.send_video_data(active_stream, bytes.clone(), timestamp.clone(), true)?
+                            client.session.send_video_data(active_stream, bytes.clone(), timestamp, true)?
                         },
                     };
 

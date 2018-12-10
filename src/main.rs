@@ -1,3 +1,5 @@
+#![warn(clippy::all)]
+
 mod error;
 mod shared;
 mod config;

@@ -53,7 +53,7 @@ impl Server {
     }
 }
 
-fn process<S>(id: u64, stream: S, shared: Shared)
+fn process<S>(id: u64, stream: S, shared: &Shared)
     where S: AsyncRead + AsyncWrite + Send + 'static
 {
     info!("New client connection: {}", id);
@@ -72,7 +72,7 @@ fn process<S>(id: u64, stream: S, shared: Shared)
 
 #[cfg(not(feature = "tls"))]
 fn spawner(id: u64, stream: TcpStream, shared: Shared) {
-    process(id, stream, shared);
+    process(id, stream, &shared);
 }
 
 #[cfg(feature = "tls")]
@@ -89,7 +89,7 @@ fn spawner(id: u64, stream: TcpStream, shared: Shared) {
 
         let tls_accept = tls_acceptor.accept(stream)
             .and_then(move |tls_stream| {
-                process(id, tls_stream, shared.clone());
+                process(id, tls_stream, &shared);
                 Ok(())
             })
             .map_err(|err| {
@@ -98,6 +98,6 @@ fn spawner(id: u64, stream: TcpStream, shared: Shared) {
 
         tokio::spawn(tls_accept);
     } else {
-        process(id, stream, shared);
+        process(id, stream, &shared);
     }
 }
