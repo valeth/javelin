@@ -40,7 +40,7 @@ impl Handler {
     pub fn new(peer_id: u64, shared: Shared) -> Result<Self> {
         let results = {
             let mut clients = shared.clients.lock();
-            let (client, results) = Client::new(peer_id)?;
+            let (client, results) = Client::new(peer_id, shared.clone())?;
             clients.insert(peer_id, client);
             results
         };
@@ -292,7 +292,7 @@ impl Handler {
 
             for client_id in &stream.watchers {
                 let mut clients = self.shared.clients.lock();
-                let mut client = match clients.get_mut(&client_id) {
+                let client = match clients.get_mut(&client_id) {
                     Some(client) => client,
                     None => continue,
                 };

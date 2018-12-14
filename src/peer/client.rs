@@ -6,6 +6,7 @@ use rml_rtmp::sessions::{
 use crate::{
     error::{Error, Result},
     peer::media::Channel,
+    shared::Shared,
 };
 
 
@@ -21,18 +22,20 @@ pub enum ClientState {
 pub struct Client {
     peer_id: u64,
     state: ClientState,
+    shared: Shared,
     pub session: ServerSession,
     pub received_video_keyframe: bool,
 }
 
 impl Client {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(peer_id: u64) -> Result<(Self, Vec<ServerSessionResult>)> {
+    pub fn new(peer_id: u64, shared: Shared) -> Result<(Self, Vec<ServerSessionResult>)> {
         let session_config = ServerSessionConfig::new();
         let (session, results) = ServerSession::new(session_config)?;
 
         let this = Self {
             peer_id,
+            shared,
             session,
             state: ClientState::Waiting,
             received_video_keyframe: false,
@@ -50,13 +53,6 @@ impl Client {
         self.state = ClientState::Publishing(app_name, stream_key);
     }
 
-    pub fn publishing_app_name(&self) -> Option<String> {
-        match self.state {
-            ClientState::Publishing(ref app_name, _) => Some(app_name.clone()),
-            _ => None,
-        }
-    }
-
     pub fn watch(&mut self, channel: &mut Channel, stream_id: u32, app_name: String) {
         channel.add_watcher(self.peer_id);
         self.state = ClientState::Watching(app_name, stream_id);
@@ -68,11 +64,24 @@ impl Client {
             _ => None,
         }
     }
+}
 
-    pub fn watched_app_name(&self) -> Option<String> {
+impl Drop for Client {
+    fn drop(&mut self) {
         match self.state {
-            ClientState::Watching(ref app_name, _) => Some(app_name.clone()),
-            _ => None,
+            ClientState::Publishing(ref app_name, _) => {
+                let mut streams = self.shared.streams.write();
+                if let Some(stream) = streams.get_mut(app_name) {
+                    stream.unpublish();
+                }
+            },
+            ClientState::Watching(ref app_name, _) => {
+                let mut streams = self.shared.streams.write();
+                if let Some(stream) = streams.get_mut(app_name) {
+                    stream.watchers.remove(&self.peer_id);
+                }
+            },
+            ClientState::Waiting => (),
         }
     }
 }
