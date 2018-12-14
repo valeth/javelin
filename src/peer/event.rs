@@ -105,10 +105,10 @@ impl Handler {
                 self.metadata_received(&app_name, &metadata)?;
             },
             VideoDataReceived { stream_key, data, timestamp, .. } => {
-                self.multimedia_data_received(&stream_key, timestamp, &Media::H264(data))?;
+                self.multimedia_data_received(&stream_key, &Media::H264(timestamp, data))?;
             },
             AudioDataReceived { stream_key, data, timestamp, .. } => {
-                self.multimedia_data_received(&stream_key, timestamp, &Media::AAC(data))?;
+                self.multimedia_data_received(&stream_key, &Media::AAC(timestamp, data))?;
             },
             PublishStreamFinished { app_name, stream_key } => {
                 self.publish_stream_finished(&app_name, &stream_key)?;
@@ -269,7 +269,7 @@ impl Handler {
         Ok(())
     }
 
-    fn multimedia_data_received(&mut self, stream_key: &str, timestamp: RtmpTimestamp, media: &Media) -> Result<()> {
+    fn multimedia_data_received(&mut self, stream_key: &str, media: &Media) -> Result<()> {
         // debug!("Received video data for stream with key {}", stream_key);
 
         let app_name = self.shared
@@ -281,10 +281,10 @@ impl Handler {
         let mut streams = self.shared.streams.write();
         if let Some(stream) = streams.get_mut(&app_name) {
             match &media {
-                Media::AAC(ref data) if media.is_sequence_header() => {
+                Media::AAC(_, ref data) if media.is_sequence_header() => {
                     stream.audio_seq_header = Some(data.clone());
                 },
-                Media::H264(ref data) if media.is_sequence_header() => {
+                Media::H264(_, ref data) if media.is_sequence_header() => {
                     stream.video_seq_header = Some(data.clone());
                 },
                 _ => (),
@@ -303,14 +303,14 @@ impl Handler {
 
                 if let Some(active_stream) = client.watched_stream() {
                     let packet = match &media {
-                        Media::AAC(bytes) => {
-                            client.session.send_audio_data(active_stream, bytes.clone(), timestamp, true)?
+                        Media::AAC(timestamp, bytes) => {
+                            client.session.send_audio_data(active_stream, bytes.clone(), timestamp.clone(), true)?
                         }
-                        Media::H264(ref bytes) => {
+                        Media::H264(timestamp, ref bytes) => {
                             if media.is_keyframe() {
                                 client.received_video_keyframe = true;
                             }
-                            client.session.send_video_data(active_stream, bytes.clone(), timestamp, true)?
+                            client.session.send_video_data(active_stream, bytes.clone(), timestamp.clone(), true)?
                         },
                     };
 

@@ -1,21 +1,26 @@
+// TODO: Move this out of this module
+
 use std::collections::HashSet;
 use bytes::Bytes;
-use rml_rtmp::sessions::StreamMetadata;
+use rml_rtmp::{
+    sessions::StreamMetadata,
+    time::RtmpTimestamp,
+};
 
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Media {
-    AAC(Bytes),
-    H264(Bytes),
+    AAC(RtmpTimestamp, Bytes),
+    H264(RtmpTimestamp, Bytes),
 }
 
 impl Media {
     pub fn is_sequence_header(&self) -> bool {
         match self {
-            Media::AAC(ref bytes) => {
+            Media::AAC(_, ref bytes) => {
                 bytes.len() >= 2 && bytes[0] == 0xaf && bytes[1] == 0x00
             },
-            Media::H264(ref bytes) => {
+            Media::H264(_, ref bytes) => {
                 bytes.len() >= 2 && bytes[0] == 0x17 && bytes[1] == 0x00
             },
         }
@@ -23,7 +28,7 @@ impl Media {
 
     pub fn is_keyframe(&self) -> bool {
         match self {
-            Media::H264(bytes) => {
+            Media::H264(_, bytes) => {
                 bytes.len() >= 2 && bytes[0] == 0x17 && bytes[1] != 0x00
             }
             _ => false
