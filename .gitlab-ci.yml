@@ -32,11 +32,6 @@ variables:
     - apt-get install -y --no-install-recommends ca-certificates libssl-dev libc6-dev pkg-config gcc
     - export PATH="$CARGO_HOME/bin:$PATH"
     - rustup default stable
-  only:
-    changes:
-      - Cargo.toml
-      - Cargo.lock
-      - src/**/*.rs
 
 .toolchain-nightly:
   extends: .read_cache
@@ -46,11 +41,6 @@ variables:
     - apt-get install -y --no-install-recommends ca-certificates libssl-dev libc6-dev pkg-config gcc
     - export PATH="$CARGO_HOME/bin:$PATH"
     - rustup default nightly
-  only:
-    changes:
-      - Cargo.toml
-      - Cargo.lock
-      - src/**/*.rs
 
 ####### Jobs #######
 
@@ -63,31 +53,35 @@ install-rust:
     - curl https://sh.rustup.rs > rustup.sh
     - sh rustup.sh -y --default-host x86_64-unknown-linux-gnu
     - export PATH="$CARGO_HOME/bin:$PATH"
-    - rustup install stable
+    - rustup install ${RUST_STABLE_VERSION:-stable}
     - rustup install nightly
+    - rustup component add clippy
+  only:
+    variables:
+      - $RUSTUP_UPDATE == "true"
+
+build-stable:
+  extends: .toolchain-stable
+  stage: build
+  script:
+    - cargo build --no-default-features
+    - cargo build --features "tls"
   only:
     changes:
       - Cargo.toml
       - Cargo.lock
       - src/**/*.rs
 
-build-stable-no-default-features:
-  extends: .toolchain-stable
-  stage: build
-  script:
-    - cargo build --no-default-features
-
-build-stable-features-tls:
-  extends: .toolchain-stable
-  stage: build
-  script:
-    - cargo build --features "tls"
-
 build-nightly:
   extends: .toolchain-nightly
   stage: build
   script:
     - cargo build
+  only:
+    changes:
+      - Cargo.toml
+      - Cargo.lock
+      - src/**/*.rs
 
 test-clippy:
   extends: .toolchain-stable
@@ -95,6 +89,9 @@ test-clippy:
   allow_failure: true
   script:
     - cargo clippy
+  only:
+    changes:
+      - src/**/*.rs
 
 deploy-crates-io:
   extends: .toolchain-stable
