@@ -14,11 +14,9 @@ use tokio_tls::TlsAcceptor;
 use crate::{
     error::Error,
     shared::Shared,
-    peer::{
-        Peer,
-        BytesStream,
-    },
 };
+
+use super::{Peer, BytesStream};
 
 
 pub struct Server {

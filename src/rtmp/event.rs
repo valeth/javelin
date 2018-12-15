@@ -15,11 +15,9 @@ use rml_rtmp::{
 use crate::{
     error::{Error, Result},
     shared::Shared,
-    peer::{
-        Client,
-        media::{Media, Channel},
-    },
+    media::{Media, Channel},
 };
+use super::Client;
 
 
 #[derive(Debug)]

@@ -5,7 +5,7 @@ use rml_rtmp::sessions::{
 };
 use crate::{
     error::{Error, Result},
-    peer::media::Channel,
+    media::Channel,
     shared::Shared,
 };
 

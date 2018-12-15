@@ -1,9 +1,3 @@
-mod bytes_stream;
-mod client;
-pub mod media;
-mod event;
-
-
 use log::{error, debug, info};
 use futures::{
     sync::mpsc,
@@ -22,18 +16,15 @@ use crate::{
     error::{Error, Result},
     shared::Shared,
 };
-pub use self::{
-    bytes_stream::BytesStream,
-    client::Client,
+use super::{
+    BytesStream,
+    event::{
+        Handler as EventHandler,
+        EventResult,
+    },
+    Sender,
+    Receiver,
 };
-use self::event::{
-    Handler as EventHandler,
-    EventResult,
-};
-
-
-type Receiver = mpsc::UnboundedReceiver<Bytes>;
-pub type Sender = mpsc::UnboundedSender<Bytes>;
 
 
 /// Represents an incoming connection

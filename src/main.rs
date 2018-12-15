@@ -3,13 +3,12 @@
 mod error;
 mod shared;
 mod config;
-mod peer;
-mod server;
+mod media;
+mod rtmp;
 mod args;
 
 
 use simplelog::{Config, SimpleLogger, TermLogger, LevelFilter};
-use crate::server::Server;
 
 
 macro_rules! init_logger {
@@ -22,5 +21,5 @@ fn main() {
         init_logger!(SimpleLogger).unwrap_or_else(|err|
             eprintln!("Failed to initialize logger: {}", err)));
 
-    Server::new().start();
+    rtmp::Server::new().start();
 }

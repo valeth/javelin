@@ -4,10 +4,10 @@ use std::{
 };
 use parking_lot::{RwLock, Mutex};
 use crate::{
-    peer::{
+    media::Channel,
+    rtmp::{
         Client,
         Sender,
-        media::Channel,
     },
     config::Config,
 };

@@ -1,5 +1,3 @@
-// TODO: Move this out of this module
-
 use std::collections::HashSet;
 use bytes::Bytes;
 use rml_rtmp::{
