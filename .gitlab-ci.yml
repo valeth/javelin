@@ -12,7 +12,7 @@ variables:
 
 .write_cache:
   cache:
-    key: "$CI_COMMIT_REF_SLUG-rustup"
+    key: "$CI_PROJECT_PATH_SLUG-rustup"
     paths:
       - .rustup
       - .cargo
