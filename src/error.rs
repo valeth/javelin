@@ -13,6 +13,9 @@ pub enum Error {
     HandshakeFailed,
     RequestError,
     SessionError(String),
+    NotEnoughData,
+    DecoderConfigurationRecordMissing,
+    UnsupportedConfigurationRecordVersion(u8),
 }
 
 impl From<io::Error> for Error {

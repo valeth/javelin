@@ -1,3 +1,6 @@
+pub mod codec;
+
+
 use std::collections::HashSet;
 use futures::sync::mpsc;
 use bytes::Bytes;
@@ -5,6 +8,9 @@ use rml_rtmp::{
     sessions::StreamMetadata,
     time::RtmpTimestamp,
 };
+
+
+pub use self::codec::avc;
 
 
 pub type Receiver = mpsc::UnboundedReceiver<Media>;
