@@ -6,3 +6,11 @@ services:
     build: .
     ports:
       - "1935:1935"
+
+  web:
+    image: nginx:alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - "./nginx.conf:/etc/nginx/nginx.conf"
+      - "./tmp/stream:/tmp/stream"
