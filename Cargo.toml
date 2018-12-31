@@ -18,6 +18,8 @@ futures = "^0.1"
 tokio = "^0.1"
 rml_rtmp = "^0.2"
 mpeg2ts = "0.1"
+m3u8-rs = "1.0"
+tempfile = "3.0"
 clap = "~2.32"
 
 [dependencies.log]
