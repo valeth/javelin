@@ -1,22 +1,6 @@
-use std::sync::Arc;
-use parking_lot::RwLock;
 use bytes::{Bytes, Buf};
 use super::nal;
 use crate::Error;
-
-
-#[derive(Debug, Clone)]
-pub struct SharedState {
-    pub(crate) dcr: Arc<RwLock<Option<DecoderConfigurationRecord>>>,
-}
-
-impl SharedState {
-    pub fn new() -> Self {
-        Self {
-            dcr: Arc::new(RwLock::new(None)),
-        }
-    }
-}
 
 
 /// AVC decoder configuration record

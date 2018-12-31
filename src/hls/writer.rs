@@ -15,7 +15,7 @@ pub struct Writer {
     last_keyframe: u64,
     keyframe_counter: usize,
     buffer: TsBuffer,
-    shared_state: avc::SharedState,
+    shared_state: media::codec::SharedState,
     playlist: Playlist,
 }
 
@@ -31,7 +31,7 @@ impl Writer {
             last_keyframe: 0,
             keyframe_counter: 0,
             buffer: TsBuffer::new(),
-            shared_state: avc::SharedState::new(),
+            shared_state: media::codec::SharedState::new(),
             // TODO: Same as TS filename, see below
             playlist: Playlist::new("./tmp/stream/playlist.m3u8"),
         }

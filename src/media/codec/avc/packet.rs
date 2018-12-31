@@ -1,12 +1,12 @@
 use bytes::{Bytes, Buf, IntoBuf};
 use super::{
-    dcr::{
-        SharedState,
-        DecoderConfigurationRecord,
-    },
+    dcr::DecoderConfigurationRecord,
     bitstream::Bitstream,
 };
-use crate::Error;
+use crate::{
+    media::codec::SharedState,
+    Error,
+};
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
