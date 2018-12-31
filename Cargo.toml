@@ -17,6 +17,7 @@ parking_lot = "^0.7"
 futures = "^0.1"
 tokio = "^0.1"
 rml_rtmp = "^0.2"
+mpeg2ts = "0.1"
 clap = "~2.32"
 
 [dependencies.log]
