@@ -3,6 +3,7 @@ use std::{
     rc::Rc,
 };
 use::log::{debug, error, info};
+use futures::{sync::oneshot, Future};
 use rml_rtmp::{
     sessions::{
         ServerSessionResult,
@@ -15,7 +16,7 @@ use rml_rtmp::{
 use crate::{
     error::{Error, Result},
     shared::Shared,
-    media::{Media, Channel},
+    media::{self, Media, Channel},
 };
 use super::Client;
 
@@ -31,6 +32,7 @@ pub struct Handler {
     peer_id: u64,
     results: VecDeque<EventResult>,
     shared: Shared,
+    media_sender: Option<media::Sender>,
 }
 
 impl Handler {
@@ -46,7 +48,8 @@ impl Handler {
         let mut this = Self {
             peer_id,
             results: VecDeque::new(),
-            shared
+            shared,
+            media_sender: None,
         };
 
         this.handle_server_session_results(results)?;
@@ -153,6 +156,17 @@ impl Handler {
                 }
             }
         }
+
+        let (request, response) = oneshot::channel();
+        self.shared.hls_sender.unbounded_send(request)
+            .map_err(|err| error!("{:?}", err))
+            .map(|_| {
+                response.map(|hls_writer_handle| {
+                    self.media_sender = Some(hls_writer_handle);
+                })
+                .wait().unwrap()
+            })
+            .unwrap();
 
         let result = {
             let mut clients = self.shared.clients.lock();
@@ -269,6 +283,10 @@ impl Handler {
 
     fn multimedia_data_received(&mut self, stream_key: &str, media: &Media) -> Result<()> {
         // debug!("Received video data for stream with key {}", stream_key);
+
+        if let Some(media_sender) = &self.media_sender {
+            media_sender.unbounded_send(media.clone()).unwrap();
+        }
 
         let app_name = self.shared
             .app_name_from_stream_key(&stream_key)

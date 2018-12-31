@@ -26,28 +26,25 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new() -> Self {
-        let shared = Shared::new();
+    pub fn new(shared: Shared) -> Self {
         let addr = shared.config.read().addr;
         let listener = TcpListener::bind(&addr).expect("Failed to bind TCP listener");
 
         Self { shared, addr, listener }
     }
 
-    pub fn start(self) {
+    pub fn start(self) -> impl Future<Item = (), Error = ()> {
         let shared = self.shared.clone();
 
-        let srv = self.listener.incoming()
+        info!("Starting up Javelin RTMP server on {}", self.addr);
+
+        self.listener.incoming()
             .zip(stream::iter_ok(0u64..))
             .map_err(|err| error!("{}", err))
             .for_each(move |(tcp_stream, id)| {
                 spawner(id, tcp_stream, shared.clone());
                 Ok(())
-            });
-
-        info!("Starting up Javelin RTMP server on {}", self.addr);
-
-        tokio::run(srv);
+            })
     }
 }
 

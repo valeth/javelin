@@ -9,6 +9,7 @@ use crate::{
         Client,
         Sender,
     },
+    hls,
     config::Config,
 };
 
@@ -20,16 +21,18 @@ pub struct Shared {
     pub clients: Arc<Mutex<HashMap<u64, Client>>>,
     pub streams: Arc<RwLock<HashMap<String, Channel>>>,
     pub app_names: Arc<RwLock<HashMap<String, String>>>,
+    pub hls_sender: hls::server::Sender,
 }
 
 impl Shared {
-    pub fn new() -> Self {
+    pub fn new(hls_sender: hls::server::Sender) -> Self {
         Self {
             config: Arc::new(RwLock::new(Config::new())),
             peers: Arc::new(RwLock::new(HashMap::new())),
             clients: Arc::new(Mutex::new(HashMap::new())),
             streams: Arc::new(RwLock::new(HashMap::new())),
             app_names: Arc::new(RwLock::new(HashMap::new())),
+            hls_sender,
         }
     }
 

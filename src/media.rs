@@ -1,9 +1,14 @@
 use std::collections::HashSet;
+use futures::sync::mpsc;
 use bytes::Bytes;
 use rml_rtmp::{
     sessions::StreamMetadata,
     time::RtmpTimestamp,
 };
+
+
+pub type Receiver = mpsc::UnboundedReceiver<Media>;
+pub type Sender = mpsc::UnboundedSender<Media>;
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,6 +40,20 @@ impl Media {
 
     pub fn is_sendable(&self) -> bool {
         self.is_sequence_header() || self.is_keyframe()
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Media::AAC(_, bytes) => bytes.len(),
+            Media::H264(_, bytes) => bytes.len(),
+        }
+    }
+
+    pub fn timestamp(&self) -> u64 {
+        match self {
+            Media::AAC(timestamp, _) => u64::from(timestamp.value),
+            Media::H264(timestamp, _) => u64::from(timestamp.value),
+        }
     }
 }
 
