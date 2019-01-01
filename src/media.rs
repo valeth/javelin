@@ -10,7 +10,7 @@ use rml_rtmp::{
 };
 
 
-pub use self::codec::avc;
+pub use self::codec::{avc, aac};
 
 
 pub type Receiver = mpsc::UnboundedReceiver<Media>;

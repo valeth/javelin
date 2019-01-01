@@ -15,6 +15,7 @@ pub enum Error {
     SessionError(String),
     NotEnoughData,
     DecoderConfigurationRecordMissing,
+    AudioSpecificConfigurationMissing,
     UnsupportedConfigurationRecordVersion(u8),
 }
 

@@ -5,7 +5,7 @@ use super::{
     transport_stream::Buffer as TsBuffer,
     m3u8::Playlist,
 };
-use crate::media::{self, Media, avc};
+use crate::media::{self, Media, avc, aac};
 
 
 pub struct Writer {
@@ -58,7 +58,7 @@ impl Future for Writer {
                     };
 
                     if packet.is_sequence_header() {
-                        debug!("Received sequence header");
+                        debug!("Received video sequence header");
                         continue;
                     }
 
@@ -86,7 +86,29 @@ impl Future for Writer {
                         warn!("Failed to put data into buffer: {:?}", why);
                     }
                 },
-                Media::AAC(_, _) => (),
+                Media::AAC(timestamp, bytes) => {
+                    let timestamp = u64::from(timestamp.value);
+
+                    let packet = match aac::Packet::try_from_bytes(bytes, timestamp, &self.shared_state) {
+                        Err(why) => {
+                            error!("Failed to build packet: {:?}", why);
+                            continue;
+                        },
+                        Ok(p) => p
+                    };
+
+                    if packet.is_sequence_header() {
+                        continue;
+                    }
+
+                    if self.keyframe_counter == 0 {
+                        continue;
+                    }
+
+                    if let Err(why) = self.buffer.push_audio(&packet) {
+                        warn!("Failed to put data into buffer: {:?}", why);
+                    }
+                },
             }
         }
 

@@ -12,24 +12,28 @@ use mpeg2ts::{
 };
 use crate::{
     Error,
-    media::codec::avc,
+    media::codec::{avc, aac},
 };
 
 
 const PMT_PID: u16 = 256;
 const VIDEO_ES_PID: u16 = 257;
+const AUDIO_ES_PID: u16 = 258;
 const PES_VIDEO_STREAM_ID: u8 = 224;
+const PES_AUDIO_STREAM_ID: u8 = 192;
 
 
 pub struct Buffer {
-    continuity_counter: ContinuityCounter,
+    video_continuity_counter: ContinuityCounter,
+    audio_continuity_counter: ContinuityCounter,
     packets: Vec<TsPacket>,
 }
 
 impl Buffer {
     pub fn new() -> Self {
         Self {
-            continuity_counter: ContinuityCounter::new(),
+            video_continuity_counter: ContinuityCounter::new(),
+            audio_continuity_counter: ContinuityCounter::new(),
             packets: Vec::new(),
         }
     }
@@ -59,7 +63,7 @@ impl Buffer {
         };
 
         let mut header = default_ts_header(VIDEO_ES_PID);
-        header.continuity_counter = self.continuity_counter;
+        header.continuity_counter = self.video_continuity_counter;
 
         let mut buf = video.try_as_bytes()?.into_buf();
         let pes_data: Bytes = buf.by_ref().take(153).collect();
@@ -114,7 +118,60 @@ impl Buffer {
         }
 
         header.continuity_counter.increment();
-        self.continuity_counter = header.continuity_counter;
+        self.video_continuity_counter = header.continuity_counter;
+
+        Ok(())
+    }
+
+    pub fn push_audio(&mut self, audio: &aac::Packet) -> Result<(), Error> {
+        use mpeg2ts::{
+            ts::payload,
+            es::StreamId,
+            time::Timestamp,
+        };
+
+        let mut buf = audio.to_bytes().into_buf();
+        let pes_data: Bytes = buf.by_ref().take(153).collect();
+
+        let mut header = default_ts_header(AUDIO_ES_PID);
+        header.continuity_counter = self.audio_continuity_counter;
+
+        let packet = TsPacket {
+            header: header.clone(),
+            adaptation_field: None,
+            payload: Some(TsPayload::Pes(payload::Pes {
+                header: PesHeader {
+                    stream_id: StreamId::new(PES_AUDIO_STREAM_ID),
+                    priority: false,
+                    data_alignment_indicator: false,
+                    copyright: false,
+                    original_or_copy: false,
+                    pts: Some(Timestamp::new(audio.presentation_timestamp() * 90).unwrap()),
+                    dts: None,
+                    escr: None,
+                },
+                pes_packet_len: 0,
+                data: payload::Bytes::new(&pes_data).unwrap(),
+            })),
+        };
+
+        self.packets.push(packet);
+
+        while buf.has_remaining() {
+            let pes_data: Bytes = buf.by_ref().take(payload::Bytes::MAX_SIZE).collect();
+            header.continuity_counter.increment();
+
+            let packet = TsPacket {
+                header: header.clone(),
+                adaptation_field: None,
+                payload: Some(TsPayload::Raw(payload::Bytes::new(&pes_data).unwrap())),
+            };
+
+            self.packets.push(packet);
+        }
+
+        header.continuity_counter.increment();
+        self.audio_continuity_counter = header.continuity_counter;
 
         Ok(())
     }
@@ -173,6 +230,11 @@ fn default_pmt_packet() -> TsPacket {
                         elementary_pid: Pid::new(VIDEO_ES_PID).unwrap(),
                         descriptors: vec![],
                     },
+                    EsInfo {
+                        stream_type: StreamType::AdtsAac,
+                        elementary_pid: Pid::new(AUDIO_ES_PID).unwrap(),
+                        descriptors: vec![],
+                    }
                 ]
             })),
     }
