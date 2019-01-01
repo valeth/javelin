@@ -1,3 +1,5 @@
+#![cfg(feature = "hls")]
+
 use bytes::Buf;
 use byteorder::{ReadBytesExt, BigEndian};
 

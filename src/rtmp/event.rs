@@ -3,6 +3,7 @@ use std::{
     rc::Rc,
 };
 use::log::{debug, error, info};
+#[cfg(feature = "hls")]
 use futures::{sync::oneshot, Future};
 use rml_rtmp::{
     sessions::{
@@ -16,8 +17,10 @@ use rml_rtmp::{
 use crate::{
     error::{Error, Result},
     shared::Shared,
-    media::{self, Media, Channel},
+    media::{Media, Channel},
 };
+#[cfg(feature = "hls")]
+use crate::media;
 use super::Client;
 
 
@@ -32,6 +35,7 @@ pub struct Handler {
     peer_id: u64,
     results: VecDeque<EventResult>,
     shared: Shared,
+    #[cfg(feature = "hls")]
     media_sender: Option<media::Sender>,
 }
 
@@ -49,6 +53,7 @@ impl Handler {
             peer_id,
             results: VecDeque::new(),
             shared,
+            #[cfg(feature = "hls")]
             media_sender: None,
         };
 
@@ -157,16 +162,8 @@ impl Handler {
             }
         }
 
-        let (request, response) = oneshot::channel();
-        self.shared.hls_sender.unbounded_send(request)
-            .map_err(|err| error!("{:?}", err))
-            .map(|_| {
-                response.map(|hls_writer_handle| {
-                    self.media_sender = Some(hls_writer_handle);
-                })
-                .wait().unwrap()
-            })
-            .unwrap();
+        #[cfg(feature = "hls")]
+        self.register_on_hls_server();
 
         let result = {
             let mut clients = self.shared.clients.lock();
@@ -284,9 +281,8 @@ impl Handler {
     fn multimedia_data_received(&mut self, stream_key: &str, media: &Media) -> Result<()> {
         // debug!("Received video data for stream with key {}", stream_key);
 
-        if let Some(media_sender) = &self.media_sender {
-            media_sender.unbounded_send(media.clone()).unwrap();
-        }
+        #[cfg(feature = "hls")]
+        self.send_to_hls_writer(media.clone());
 
         let app_name = self.shared
             .app_name_from_stream_key(&stream_key)
@@ -337,6 +333,30 @@ impl Handler {
 
         Ok(())
     }
+
+    #[cfg(feature = "hls")]
+    fn register_on_hls_server(&mut self) {
+        if let Some(sender) = self.shared.hls_sender() {
+            let (request, response) = oneshot::channel();
+            sender.unbounded_send(request)
+                .map_err(|err| error!("{:?}", err))
+                .map(|_| {
+                    response.map(|hls_writer_handle| {
+                        self.media_sender = Some(hls_writer_handle);
+                    })
+                    .wait().unwrap()
+                })
+                .unwrap();
+        }
+    }
+
+
+    #[cfg(feature = "hls")]
+    fn send_to_hls_writer(&self, media: Media) {
+        if let Some(media_sender) = &self.media_sender {
+            media_sender.unbounded_send(media).unwrap();
+        }
+    }
 }
 
 impl Drop for Handler {
@@ -345,3 +365,4 @@ impl Drop for Handler {
         clients.remove(&self.peer_id);
     }
 }
+

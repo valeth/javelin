@@ -1,19 +1,24 @@
+#[cfg(feature = "hls")]
 pub mod codec;
 
 
 use std::collections::HashSet;
-use futures::sync::mpsc;
 use bytes::Bytes;
 use rml_rtmp::{
     sessions::StreamMetadata,
     time::RtmpTimestamp,
 };
+#[cfg(feature = "hls")]
+use futures::sync::mpsc;
 
 
+#[cfg(feature = "hls")]
 pub use self::codec::{avc, aac};
 
 
+#[cfg(feature = "hls")]
 pub type Receiver = mpsc::UnboundedReceiver<Media>;
+#[cfg(feature = "hls")]
 pub type Sender = mpsc::UnboundedSender<Media>;
 
 

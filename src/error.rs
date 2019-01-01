@@ -13,9 +13,13 @@ pub enum Error {
     HandshakeFailed,
     RequestError,
     SessionError(String),
+    #[cfg(feature = "hls")]
     NotEnoughData,
+    #[cfg(feature = "hls")]
     DecoderConfigurationRecordMissing,
+    #[cfg(feature = "hls")]
     AudioSpecificConfigurationMissing,
+    #[cfg(feature = "hls")]
     UnsupportedConfigurationRecordVersion(u8),
 }
 

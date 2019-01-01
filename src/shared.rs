@@ -9,9 +9,10 @@ use crate::{
         Client,
         Sender,
     },
-    hls,
     config::Config,
 };
+#[cfg(feature = "hls")]
+use crate::hls;
 
 
 #[derive(Clone)]
@@ -21,18 +22,34 @@ pub struct Shared {
     pub clients: Arc<Mutex<HashMap<u64, Client>>>,
     pub streams: Arc<RwLock<HashMap<String, Channel>>>,
     pub app_names: Arc<RwLock<HashMap<String, String>>>,
-    pub hls_sender: hls::server::Sender,
+    #[cfg(feature = "hls")]
+    hls_sender: Arc<RwLock<Option<hls::server::Sender>>>,
 }
 
 impl Shared {
-    pub fn new(hls_sender: hls::server::Sender) -> Self {
+    pub fn new() -> Self {
         Self {
             config: Arc::new(RwLock::new(Config::new())),
             peers: Arc::new(RwLock::new(HashMap::new())),
             clients: Arc::new(Mutex::new(HashMap::new())),
             streams: Arc::new(RwLock::new(HashMap::new())),
             app_names: Arc::new(RwLock::new(HashMap::new())),
-            hls_sender,
+            #[cfg(feature = "hls")]
+            hls_sender: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    #[cfg(feature = "hls")]
+    pub fn set_hls_sender(&mut self, sender: hls::server::Sender) {
+        let mut hls_sender = self.hls_sender.write();
+        *hls_sender = Some(sender);
+    }
+
+    #[cfg(feature = "hls")]
+    pub fn hls_sender(&self) -> Option<hls::server::Sender> {
+        match self.hls_sender.read().clone() {
+            Some(sender) => Some(sender),
+            None => None,
         }
     }
 

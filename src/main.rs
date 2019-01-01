@@ -6,12 +6,16 @@ mod shared;
 mod config;
 mod media;
 mod rtmp;
-mod hls;
 mod args;
+
+#[cfg(feature = "hls")]
+mod hls;
 
 
 use futures::future::lazy;
 use simplelog::{Config, SimpleLogger, TermLogger, LevelFilter};
+
+#[allow(unused_imports)]
 use self::{
     shared::Shared,
     error::Error,
@@ -29,14 +33,21 @@ fn main() {
             eprintln!("Failed to initialize logger: {}", err)));
 
     tokio::run(lazy(|| {
-        let hls_server = hls::Server::new();
-        let hls_sender = hls_server.sender();
-        tokio::spawn(hls_server.coordinator());
+        let shared = Shared::new();
 
-        let shared = Shared::new(hls_sender);
+        #[cfg(feature = "hls")]
+        spawn_hls_server(shared.clone());
 
         tokio::spawn(rtmp::Server::new(shared.clone()).start());
 
         Ok(())
     }));
+}
+
+#[cfg(feature = "hls")]
+fn spawn_hls_server(mut shared: Shared) {
+    let hls_server = hls::Server::new();
+    let hls_sender = hls_server.sender();
+    shared.set_hls_sender(hls_sender);
+    tokio::spawn(hls_server.coordinator());
 }
