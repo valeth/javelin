@@ -66,6 +66,9 @@ build-stable:
   script:
     - cargo build --no-default-features
     - cargo build --features "tls"
+    - cargo build --features "hls"
+    - cargo build
+    - cargo test --tests
   only:
     changes:
       - Cargo.toml
@@ -77,6 +80,7 @@ build-nightly:
   stage: build
   script:
     - cargo build
+    - cargo test --tests
   only:
     changes:
       - Cargo.toml
