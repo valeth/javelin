@@ -5,6 +5,10 @@
 /.cargo
 /.rustup
 
+# Editor/IDE
+/.idea
+/.vscode
+
 # Misc
 /cert*
 /.env*
