@@ -46,7 +46,7 @@ fn main() {
 
 #[cfg(feature = "hls")]
 fn spawn_hls_server(mut shared: Shared) {
-    let hls_server = hls::Server::new();
+    let hls_server = hls::Server::new(shared.clone());
     let hls_sender = hls_server.sender();
     shared.set_hls_sender(hls_sender);
     tokio::spawn(hls_server.coordinator());

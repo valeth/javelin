@@ -1,3 +1,4 @@
+use std::{path::PathBuf, fs};
 use log::{debug, error, warn};
 use futures::try_ready;
 use tokio::prelude::*;
@@ -5,7 +6,11 @@ use super::{
     transport_stream::Buffer as TsBuffer,
     m3u8::Playlist,
 };
-use crate::media::{self, Media, avc, aac};
+use crate::{
+    shared::Shared,
+    media::{self, Media, avc, aac},
+    error::{Error, Result},
+};
 
 
 pub struct Writer {
@@ -17,14 +22,28 @@ pub struct Writer {
     buffer: TsBuffer,
     shared_state: media::codec::SharedState,
     playlist: Playlist,
+    _shared: Shared,
+    stream_path: PathBuf,
 }
 
 impl Writer {
-    pub fn new(receiver: media::Receiver) -> Self {
+    pub fn create(app_name: String, receiver: media::Receiver, shared: Shared) -> Result<Self> {
         let write_interval = 2000; // milliseconds
         let next_write = write_interval; // milliseconds
 
-        Self {
+        let hls_root = shared.config.read().hls.root_dir.clone();
+        let stream_path = hls_root.join(app_name);
+        let playlist_path = stream_path.join("playlist.m3u8");
+
+        if stream_path.exists() && !stream_path.is_dir() {
+            return Err(Error::Custom(format!("Path '{}' exists, but is not a directory", stream_path.display())));
+        } else {
+            debug!("Creating HLS directory at '{:?}'", stream_path);
+            fs::create_dir_all(&stream_path)?;
+        }
+
+
+        Ok(Self {
             receiver,
             write_interval,
             next_write,
@@ -32,9 +51,10 @@ impl Writer {
             keyframe_counter: 0,
             buffer: TsBuffer::new(),
             shared_state: media::codec::SharedState::new(),
-            // TODO: Same as TS filename, see below
-            playlist: Playlist::new("./tmp/stream/playlist.m3u8"),
-        }
+            playlist: Playlist::new(playlist_path),
+            _shared: shared,
+            stream_path,
+        })
     }
 }
 
@@ -70,9 +90,8 @@ impl Future for Writer {
                         }
 
                         if timestamp >= self.next_write {
-                            // TODO: Use publishing application name as output directory and check if exists.
                             let filename = format!("{}-{}-{}.ts", "test", timestamp, self.keyframe_counter);
-                            let path = format!("./tmp/stream/{}", filename);
+                            let path = self.stream_path.join(&filename);
                             self.buffer.write_to_file(&path).unwrap();
                             self.playlist.add_media_segment(filename, keyframe_duration);
                             self.next_write += self.write_interval;

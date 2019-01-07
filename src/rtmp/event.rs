@@ -163,7 +163,7 @@ impl Handler {
         }
 
         #[cfg(feature = "hls")]
-        self.register_on_hls_server();
+        self.register_on_hls_server(app_name.clone());
 
         let result = {
             let mut clients = self.shared.clients.lock();
@@ -335,10 +335,10 @@ impl Handler {
     }
 
     #[cfg(feature = "hls")]
-    fn register_on_hls_server(&mut self) {
+    fn register_on_hls_server(&mut self, app_name: String) {
         if let Some(sender) = self.shared.hls_sender() {
             let (request, response) = oneshot::channel();
-            sender.unbounded_send(request)
+            sender.unbounded_send((app_name, request))
                 .map_err(|err| error!("{:?}", err))
                 .map(|_| {
                     response.map(|hls_writer_handle| {

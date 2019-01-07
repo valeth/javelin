@@ -32,8 +32,9 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
             .multiple(true)
             .takes_value(true));
 
-    args = if cfg!(feature = "tls") {
-        args.arg(Arg::with_name("no_tls")
+    if cfg!(feature = "tls") {
+        args = args
+        .arg(Arg::with_name("no_tls")
              .long("no-tls")
              .help("Disables TLS support"))
         .arg(Arg::with_name("cert")
@@ -42,9 +43,16 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
               .required_unless("no_tls")
               .help("The TLS certificate to use")
               .takes_value(true))
-    } else {
-        args
-    };
+    }
+
+    if cfg!(feature = "hls") {
+        args = args
+        .arg(Arg::with_name("hls_root")
+            .long("hls-root")
+            .value_name("PATH")
+            .help("The directory where stream output will be placed")
+            .takes_value(true))
+    }
 
     args.get_matches()
 }

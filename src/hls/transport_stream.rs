@@ -1,4 +1,4 @@
-use std::{io, fs::File};
+use std::{io, fs::File, path::Path};
 use bytes::{Bytes, Buf, IntoBuf};
 use mpeg2ts::{
     ts::{
@@ -38,7 +38,9 @@ impl Buffer {
         }
     }
 
-    pub fn write_to_file(&mut self, filename: &str) -> io::Result<()> {
+    pub fn write_to_file<P>(&mut self, filename: P) -> io::Result<()>
+        where P: AsRef<Path>
+    {
         use mpeg2ts::ts::{TsPacketWriter, WriteTsPacket};
 
         let file = File::create(filename)?;

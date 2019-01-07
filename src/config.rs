@@ -4,12 +4,13 @@ use std::{
 };
 #[cfg(feature = "tls")]
 use std::{
-    path::PathBuf,
     fs::File,
     io::Read,
     env,
 };
-#[cfg(feature = "tls")]
+#[cfg(any(feature = "tls", feature = "hls"))]
+use std::path::PathBuf;
+#[cfg(any(feature = "tls", feature = "hls"))]
 use clap::ArgMatches;
 use crate::args;
 #[cfg(feature = "tls")]
@@ -55,11 +56,31 @@ impl TlsConfig {
 
 
 #[derive(Debug, Clone)]
+#[cfg(feature = "hls")]
+pub struct HlsConfig {
+    pub root_dir: PathBuf,
+}
+
+#[cfg(feature = "hls")]
+impl HlsConfig {
+    pub fn new(args: &ArgMatches) -> Self {
+        let root_dir = args.value_of("hls_root")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("./tmp/stream"));
+
+        Self { root_dir }
+    }
+}
+
+
+#[derive(Debug, Clone)]
 pub struct Config {
     pub addr: SocketAddr,
     pub permitted_stream_keys: HashSet<String>,
     #[cfg(feature = "tls")]
     pub tls: TlsConfig,
+    #[cfg(feature = "hls")]
+    pub hls: HlsConfig,
 }
 
 impl Config {
@@ -80,6 +101,8 @@ impl Config {
             permitted_stream_keys,
             #[cfg(feature = "tls")]
             tls: TlsConfig::new(&matches),
+            #[cfg(feature = "hls")]
+            hls: HlsConfig::new(&matches),
         }
     }
 }
