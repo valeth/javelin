@@ -1,3 +1,4 @@
+use log::debug;
 use bytes::{Bytes, Buf, IntoBuf};
 use super::{
     dcr::DecoderConfigurationRecord,
@@ -91,6 +92,7 @@ impl Packet {
         let composition_time = tmp & 0x00_FF_FF_FF;
 
         if packet_type == PacketType::SequenceHeader {
+            debug!("Received video sequence header");
             let mut dcr = shared.dcr.write();
             *dcr = Some(DecoderConfigurationRecord::try_from_buf(&mut buf)?);
         }

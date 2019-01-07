@@ -2,6 +2,7 @@ use std::{path::PathBuf, fs};
 use log::{debug, error, warn};
 use futures::try_ready;
 use tokio::prelude::*;
+use bytes::Bytes;
 use super::{
     transport_stream::Buffer as TsBuffer,
     m3u8::Playlist,
@@ -56,6 +57,68 @@ impl Writer {
             stream_path,
         })
     }
+
+    fn handle_h264<T>(&mut self, timestamp: T, bytes: Bytes) -> Result<()>
+        where T: Into<u64>
+    {
+        let timestamp: u64 = timestamp.into();
+
+        let packet = avc::Packet::try_from_buf(bytes, timestamp, &self.shared_state)?;
+
+        if packet.is_sequence_header() {
+            return Ok(());
+        }
+
+        if packet.is_keyframe() {
+            let keyframe_duration = timestamp - self.last_keyframe;
+
+            if self.keyframe_counter == 1 {
+                self.playlist.set_target_duration(keyframe_duration * 3);
+            }
+
+            if timestamp >= self.next_write {
+                let filename = format!("{}-{}-{}.ts", "test", timestamp, self.keyframe_counter);
+                let path = self.stream_path.join(&filename);
+                self.buffer.write_to_file(&path).unwrap();
+                self.playlist.add_media_segment(filename, keyframe_duration);
+                self.next_write += self.write_interval;
+            }
+
+            self.keyframe_counter += 1;
+            self.last_keyframe = timestamp;
+        }
+
+        if let Err(why) = self.buffer.push_video(&packet) {
+            warn!("Failed to put data into buffer: {:?}", why);
+        }
+
+        Ok(())
+    }
+
+    fn handle_aac<T>(&mut self, timestamp: T, bytes: Bytes) -> Result<()>
+        where T: Into<u64>
+    {
+        let timestamp: u64 = timestamp.into();
+
+        let packet = aac::Packet::try_from_bytes(bytes, timestamp, &self.shared_state)?;
+
+        if self.keyframe_counter == 0 || packet.is_sequence_header() {
+            return Ok(());
+        }
+
+        if let Err(why) = self.buffer.push_audio(&packet) {
+            warn!("Failed to put data into buffer: {:?}", why);
+        }
+
+        Ok(())
+    }
+
+    fn handle(&mut self, media: Media) -> Result<()> {
+        match media {
+            Media::H264(timestamp, bytes) => self.handle_h264(timestamp.value, bytes),
+            Media::AAC(timestamp, bytes) => self.handle_aac(timestamp.value, bytes),
+        }
+    }
 }
 
 
@@ -65,70 +128,7 @@ impl Future for Writer {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         while let Some(media) = try_ready!(self.receiver.poll()) {
-            match media {
-                Media::H264(timestamp, bytes) => {
-                    let timestamp = u64::from(timestamp.value);
-
-                    let packet = match avc::Packet::try_from_buf(bytes, timestamp, &self.shared_state) {
-                        Err(why) => {
-                            error!("Failed to build packet: {:?}", why);
-                            continue;
-                        },
-                        Ok(p) => p
-                    };
-
-                    if packet.is_sequence_header() {
-                        debug!("Received video sequence header");
-                        continue;
-                    }
-
-                    if packet.is_keyframe() {
-                        let keyframe_duration = timestamp - self.last_keyframe;
-
-                        if self.keyframe_counter == 1 {
-                            self.playlist.set_target_duration(keyframe_duration * 3);
-                        }
-
-                        if timestamp >= self.next_write {
-                            let filename = format!("{}-{}-{}.ts", "test", timestamp, self.keyframe_counter);
-                            let path = self.stream_path.join(&filename);
-                            self.buffer.write_to_file(&path).unwrap();
-                            self.playlist.add_media_segment(filename, keyframe_duration);
-                            self.next_write += self.write_interval;
-                        }
-
-                        self.keyframe_counter += 1;
-                        self.last_keyframe = timestamp;
-                    }
-
-                    if let Err(why) = self.buffer.push_video(&packet) {
-                        warn!("Failed to put data into buffer: {:?}", why);
-                    }
-                },
-                Media::AAC(timestamp, bytes) => {
-                    let timestamp = u64::from(timestamp.value);
-
-                    let packet = match aac::Packet::try_from_bytes(bytes, timestamp, &self.shared_state) {
-                        Err(why) => {
-                            error!("Failed to build packet: {:?}", why);
-                            continue;
-                        },
-                        Ok(p) => p
-                    };
-
-                    if packet.is_sequence_header() {
-                        continue;
-                    }
-
-                    if self.keyframe_counter == 0 {
-                        continue;
-                    }
-
-                    if let Err(why) = self.buffer.push_audio(&packet) {
-                        warn!("Failed to put data into buffer: {:?}", why);
-                    }
-                },
-            }
+            self.handle(media).map_err(|why| error!("{:?}", why))?;
         }
 
         Ok(Async::Ready(()))
