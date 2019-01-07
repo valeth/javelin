@@ -24,6 +24,8 @@ pub struct Shared {
     pub app_names: Arc<RwLock<HashMap<String, String>>>,
     #[cfg(feature = "hls")]
     hls_sender: Arc<RwLock<Option<hls::server::Sender>>>,
+    #[cfg(feature = "hls")]
+    fcleaner_sender: Arc<RwLock<Option<hls::file_cleaner::Sender>>>,
 }
 
 impl Shared {
@@ -36,6 +38,8 @@ impl Shared {
             app_names: Arc::new(RwLock::new(HashMap::new())),
             #[cfg(feature = "hls")]
             hls_sender: Arc::new(RwLock::new(None)),
+            #[cfg(feature = "hls")]
+            fcleaner_sender: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -47,10 +51,18 @@ impl Shared {
 
     #[cfg(feature = "hls")]
     pub fn hls_sender(&self) -> Option<hls::server::Sender> {
-        match self.hls_sender.read().clone() {
-            Some(sender) => Some(sender),
-            None => None,
-        }
+        self.hls_sender.read().clone()
+    }
+
+    #[cfg(feature = "hls")]
+    pub fn set_fcleaner_sender(&mut self, sender: hls::file_cleaner::Sender) {
+        let mut fcleaner_sender = self.fcleaner_sender.write();
+        *fcleaner_sender = Some(sender);
+    }
+
+    #[cfg(feature = "hls")]
+    pub fn fcleaner_sender(&self) -> Option<hls::file_cleaner::Sender> {
+        self.fcleaner_sender.read().clone()
     }
 
     pub fn app_name_from_stream_key(&self, stream_key: &str) -> Option<String> {

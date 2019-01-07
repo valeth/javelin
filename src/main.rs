@@ -48,6 +48,8 @@ fn main() {
 fn spawn_hls_server(mut shared: Shared) {
     let hls_server = hls::Server::new(shared.clone());
     let hls_sender = hls_server.sender();
+    let file_cleaner = hls::file_cleaner::FileCleaner::new(shared.clone());
     shared.set_hls_sender(hls_sender);
-    tokio::spawn(hls_server.coordinator());
+    tokio::spawn(hls_server);
+    tokio::spawn(file_cleaner);
 }

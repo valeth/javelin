@@ -23,7 +23,6 @@ pub struct Writer {
     buffer: TsBuffer,
     shared_state: media::codec::SharedState,
     playlist: Playlist,
-    _shared: Shared,
     stream_path: PathBuf,
 }
 
@@ -52,8 +51,7 @@ impl Writer {
             keyframe_counter: 0,
             buffer: TsBuffer::new(),
             shared_state: media::codec::SharedState::new(),
-            playlist: Playlist::new(playlist_path),
-            _shared: shared,
+            playlist: Playlist::new(playlist_path, shared.clone()),
             stream_path,
         })
     }

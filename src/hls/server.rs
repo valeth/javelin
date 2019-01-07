@@ -1,6 +1,9 @@
 use log::error;
 use tokio::prelude::*;
-use futures::sync::{mpsc, oneshot};
+use futures::{
+    try_ready,
+    sync::{mpsc, oneshot},
+};
 use crate::{
     media,
     shared::Shared,
@@ -29,19 +32,23 @@ impl Server {
     pub fn sender(&self) -> Sender {
         self.sender.clone()
     }
+}
 
-    /// Returns a future that completes if the channel stream is done.
-    pub fn coordinator(self) -> impl Future<Item = (), Error = ()> {
-        let shared = self.shared.clone();
+impl Future for Server {
+    type Item = ();
+    type Error = ();
 
-        self.receiver.for_each(move |(app_name, request)| {
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        while let Some((app_name, request)) = try_ready!(self.receiver.poll()) {
             let (sender, receiver) = mpsc::unbounded();
             request.send(sender).unwrap();
-            match Writer::create(app_name, receiver, shared.clone()) {
+
+            match Writer::create(app_name, receiver, self.shared.clone()) {
                 Ok(writer) => { tokio::spawn(writer); },
                 Err(why) => error!("Failed to create writer: {:?}", why),
             }
-            Ok(())
-        })
+        }
+
+        Ok(Async::Ready(()))
     }
 }
