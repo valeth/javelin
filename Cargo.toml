@@ -1,12 +1,12 @@
 [package]
 authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 name = "javelin"
-description = "RTMP streaming server"
+description = "Simple streaming server"
 keywords = ["rtmp", "streaming", "media"]
 license = "GPL-3.0"
 readme = "README.md"
 repository = "https://gitlab.com/valeth/javelin.git"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2018"
 
 [dependencies]
