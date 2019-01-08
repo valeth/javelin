@@ -40,7 +40,7 @@ impl FileCleaner {
         for _ in 0..10 {
             match self.receiver.poll() {
                 Ok(Async::Ready(Some((duration, batch)))) => {
-                    let timestamp = Instant::now() + duration;
+                    let timestamp = Instant::now() + duration * 2;
                     debug!("Cleanup queued at {:?}", timestamp);
                     self.items.insert_at(batch, timestamp);
                 },
