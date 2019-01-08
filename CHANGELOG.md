@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [0.3.0]
+
+### Added
+- Optional support for HLS streaming output
+
+
 ## [0.2.3]
 
 ### Added
@@ -52,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- links -->
 
 [Unreleased]: https://gitlab.com/valeth/javelin/tree/develop
+[0.3.0]: https://gitlab.com/valeth/javelin/tree/0.3.0
 [0.2.3]: https://gitlab.com/valeth/javelin/tree/0.2.3
 [0.2.2]: https://gitlab.com/valeth/javelin/tree/0.2.2
 [0.2.1]: https://gitlab.com/valeth/javelin/tree/0.2.1
