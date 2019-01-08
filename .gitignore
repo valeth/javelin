@@ -13,4 +13,3 @@
 /cert*
 /.env*
 /tmp
-!/tmp/stream/.keep
