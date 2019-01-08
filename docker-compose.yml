@@ -4,8 +4,12 @@ services:
   javelin:
     image: registry.gitlab.com/valeth/javelin:develop
     build: .
+    command:
+      - "--permit-stream-key=123456"
     ports:
       - "1935:1935"
+    volumes:
+      - "./tmp/stream:/var/data"
 
   web:
     image: nginx:alpine

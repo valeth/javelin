@@ -1,6 +1,6 @@
 # |-------<[ Build ]>-------|
 
-FROM rust:1.30-slim AS build
+FROM rust:1.31-slim AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
@@ -19,7 +19,7 @@ RUN cargo build --release \
 
 # |-------<[ App ]>-------|
 
-FROM rust:1.30-slim
+FROM rust:1.31-slim
 
 LABEL maintainer="dev.patrick.auernig@gmail.com"
 
@@ -28,10 +28,10 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     ca-certificates
 
-RUN mkdir -p /app
+RUN mkdir -p {/app, /var/data}
 WORKDIR /app
 
 COPY --from=build /build/out/javelin ./javelin
 
 EXPOSE 1935
-CMD ["/app/javelin", "--no-tls"]
+ENTRYPOINT ["/app/javelin", "--no-tls", "--hls-root=/var/data"]
