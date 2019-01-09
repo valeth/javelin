@@ -1,5 +1,6 @@
 use std::fmt;
 use bytes::{Bytes, BytesMut, IntoBuf};
+use crate::{Error, Result};
 
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
@@ -24,7 +25,7 @@ pub enum UnitType {
 }
 
 impl UnitType {
-    fn try_from(value: u8) -> Result<Self, ()> {
+    fn try_from(value: u8) -> Result<Self> {
         let val = match value {
             1 => UnitType::NonIdrPicture,
             2 => UnitType::DataPartitionA,
@@ -43,8 +44,12 @@ impl UnitType {
             15 => UnitType::SequenceParameterSubset,
             19 => UnitType::NotAuxiliaryCoded,
             20 => UnitType::CodedSliceExtension,
-            16 | 17 | 18 | 22 | 23 => return Err(()),
-            _ => return Err(()),
+            16 | 17 | 18 | 22 | 23 => {
+                return Err(Error::ParseError(format!("Reserved NAL unit type {}", value)));
+            },
+            _ => {
+                return Err(Error::ParseError(format!("Unknown NAL unit type {}", value)));
+            },
         };
 
         Ok(val)
@@ -60,18 +65,18 @@ pub struct Unit {
     pub data: Bytes, // Raw Byte Sequence Payload (RBSP)
 }
 
-impl From<Bytes> for Unit {
-    fn from(bytes: Bytes) -> Self {
+impl Unit {
+    pub fn try_from_bytes(bytes: Bytes) -> Result<Self> {
         use bytes::Buf;
 
         let mut buf = bytes.into_buf();
         let header = buf.get_u8();
-        assert!(header >> 7 == 0);
+        assert_eq!(header >> 7, 0);
         let ref_idc = (header >> 5) & 0x03;
-        let kind = UnitType::try_from(header & 0x1F).unwrap();
+        let kind = UnitType::try_from(header & 0x1F)?;
         let data: Bytes = buf.collect();
 
-        Self { ref_idc, kind, data }
+        Ok(Self { ref_idc, kind, data })
     }
 }
 

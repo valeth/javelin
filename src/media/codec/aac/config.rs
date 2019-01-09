@@ -1,5 +1,5 @@
 use bytes::Buf;
-use crate::Error;
+use crate::{Error, Result};
 
 
 /// See [MPEG-4 Audio Object Types][audio_object_types]
@@ -15,13 +15,13 @@ pub enum AudioObjectType {
 }
 
 impl AudioObjectType {
-    pub fn try_from_u8(value: u8) -> Result<Self, Error> {
+    pub fn try_from_u8(value: u8) -> Result<Self> {
         let val = match  value {
             1 => AudioObjectType::AacMain,
             2 => AudioObjectType::AacLowComplexity,
             3 => AudioObjectType::AacScalableSampleRate,
             4 => AudioObjectType::AacLongTermPrediction,
-            _ => return Err(Error::Custom("Unsupported audio object type".into())),
+            _ => return Err(Error::from("Unsupported audio object type")),
         };
 
         Ok(val)
@@ -49,7 +49,7 @@ pub struct AudioSpecificConfiguration {
 }
 
 impl AudioSpecificConfiguration {
-    pub fn try_from_buf<B>(buf: &mut B) -> Result<Self, Error>
+    pub fn try_from_buf<B>(buf: &mut B) -> Result<Self>
         where B: Buf
     {
         let x = buf.get_u8();

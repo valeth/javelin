@@ -7,6 +7,7 @@ use super::{
 use crate::{
     media::codec::SharedState,
     Error,
+    Result,
 };
 
 
@@ -77,7 +78,7 @@ pub struct Packet {
 }
 
 impl Packet {
-    pub fn try_from_buf<B>(bytes: B, timestamp: u64, shared: &SharedState) -> Result<Self, Error>
+    pub fn try_from_buf<B>(bytes: B, timestamp: u64, shared: &SharedState) -> Result<Self>
         where B: IntoBuf
     {
         let mut buf = bytes.into_buf();
@@ -109,7 +110,7 @@ impl Packet {
         })
     }
 
-    pub fn try_as_bytes(&self) -> Result<Bytes, Error> {
+    pub fn try_as_bytes(&self) -> Result<Bytes> {
         self.nal_units.try_as_bytes()
     }
 

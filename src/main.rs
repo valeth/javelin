@@ -18,7 +18,7 @@ use simplelog::{Config, SimpleLogger, TermLogger, LevelFilter};
 #[allow(unused_imports)]
 use self::{
     shared::Shared,
-    error::Error,
+    error::{Error, Result},
 };
 
 

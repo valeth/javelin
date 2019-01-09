@@ -4,7 +4,7 @@ use super::{
     dcr::DecoderConfigurationRecord,
     nal,
 };
-use crate::{utils, Error};
+use crate::{utils, Error, Result};
 
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl<'a> Bitstream {
     const DELIMITER2: &'a [u8] = &[0x00, 0x00, 0x00, 0x01];
     const ACCESS_UNIT_DELIMITER: &'a [u8] = &[0x00, 0x00, 0x00, 0x01, 0x09, 0xF0];
 
-    pub fn try_from_buf<B>(bytes: B, dcr: DecoderConfigurationRecord) -> Result<Self, Error>
+    pub fn try_from_buf<B>(bytes: B, dcr: DecoderConfigurationRecord) -> Result<Self>
         where B: IntoBuf,
     {
         use bytes::Buf;
@@ -27,9 +27,9 @@ impl<'a> Bitstream {
         let mut nal_units = Vec::new();
 
         while buf.has_remaining() {
-            let nalu_length = utils::bytes_as_usize_be(dcr.nalu_size as usize, &mut buf);
+            let nalu_length = utils::try_bytes_as_usize_be(dcr.nalu_size as usize, &mut buf)?;
             let nalu_data: Bytes = buf.by_ref().take(nalu_length).collect();
-            nal_units.push(nal::Unit::from(nalu_data))
+            nal_units.push(nal::Unit::try_from_bytes(nalu_data)?)
         };
 
         if buf.has_remaining() {
@@ -39,7 +39,7 @@ impl<'a> Bitstream {
         Ok(Self { nal_units, dcr })
     }
 
-    pub fn try_as_bytes(&self) -> Result<Bytes, Error> {
+    pub fn try_as_bytes(&self) -> Result<Bytes> {
         use self::nal::UnitType;
 
         let mut tmp = BytesMut::new();
@@ -69,15 +69,15 @@ impl<'a> Bitstream {
                     }
 
                     if !sps_and_pps_appended {
-                        if !dcr.sps.is_empty() {
+                        if let Some(sps) = dcr.sps.first() {
                             tmp.extend(Self::DELIMITER2);
-                            let unit: Bytes = dcr.sps.first().unwrap().clone().into();
+                            let unit: Bytes = sps.clone().into();
                             tmp.extend(unit);
                         }
 
-                        if !dcr.pps.is_empty() {
+                        if let Some(pps) = dcr.pps.first() {
                             tmp.extend(Self::DELIMITER2);
-                            let unit: Bytes = dcr.pps.first().unwrap().clone().into();
+                            let unit: Bytes = pps.clone().into();
                             tmp.extend(unit);
                         }
 
@@ -102,21 +102,21 @@ impl<'a> Bitstream {
 }
 
 #[cfg(feature = "try_from")]
-impl<'a, B> TryFrom<(B, DecoderConfigurationRecord)> for Bitstream<'a>
+impl<B> TryFrom<(B, DecoderConfigurationRecord)> for Bitstream
     where B: IntoBuf
 {
     type Error = Error;
 
-    fn try_from(value: (B, DecoderConfigurationRecord)) -> Result<Self, Self::Error> {
+    fn try_from(value: (B, DecoderConfigurationRecord)) -> Result<Self> {
         Self::try_from_buf(value.0, value.1)
     }
 }
 
 #[cfg(feature = "try_from")]
-impl<'a> TryInto<Bytes> for Bitstream<'a> {
+impl TryInto<Bytes> for Bitstream {
     type Error = Error;
 
-    fn try_into(self) -> Result<Bytes, Self::Error> {
+    fn try_into(self) -> Result<Bytes> {
         self.try_into_bytes()
     }
 }

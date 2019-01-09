@@ -1,6 +1,6 @@
 use bytes::{Bytes, Buf};
 use super::nal;
-use crate::Error;
+use crate::{Error, Result};
 
 
 /// AVC decoder configuration record
@@ -33,7 +33,7 @@ pub struct DecoderConfigurationRecord {
 }
 
 impl DecoderConfigurationRecord {
-    pub fn try_from_buf<B>(buf: &mut B) -> Result<Self, Error>
+    pub fn try_from_buf<B>(buf: &mut B) -> Result<Self>
         where B: Buf
     {
         if buf.remaining() < 7 {
@@ -55,7 +55,7 @@ impl DecoderConfigurationRecord {
         for _ in 0..sps_count {
             let sps_length = buf.get_u16_be() as usize;
             let tmp: Bytes = buf.by_ref().take(sps_length).collect();
-            sps.push(nal::Unit::from(tmp));
+            sps.push(nal::Unit::try_from_bytes(tmp)?);
         }
 
         let pps_count = buf.get_u8();
@@ -63,7 +63,7 @@ impl DecoderConfigurationRecord {
         for _ in 0..pps_count {
             let pps_length = buf.get_u16_be() as usize;
             let tmp: Bytes = buf.by_ref().take(pps_length).collect();
-            pps.push(nal::Unit::from(tmp));
+            pps.push(nal::Unit::try_from_bytes(tmp)?);
         }
 
         Ok(Self {

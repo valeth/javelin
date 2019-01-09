@@ -1,4 +1,4 @@
-use std::{io, fs::File, path::Path};
+use std::{fs::File, path::Path};
 use bytes::{Bytes, Buf, IntoBuf};
 use mpeg2ts::{
     ts::{
@@ -11,7 +11,7 @@ use mpeg2ts::{
     pes::PesHeader,
 };
 use crate::{
-    Error,
+    Result,
     media::codec::{avc, aac},
 };
 
@@ -38,7 +38,7 @@ impl Buffer {
         }
     }
 
-    pub fn write_to_file<P>(&mut self, filename: P) -> io::Result<()>
+    pub fn write_to_file<P>(&mut self, filename: P) -> Result<()>
         where P: AsRef<Path>
     {
         use mpeg2ts::ts::{TsPacketWriter, WriteTsPacket};
@@ -47,24 +47,24 @@ impl Buffer {
         let packets: Vec<_> = self.packets.drain(..).collect();
         let mut writer = TsPacketWriter::new(file);
 
-        writer.write_ts_packet(&default_pat_packet()).unwrap();
-        writer.write_ts_packet(&default_pmt_packet()).unwrap();
+        writer.write_ts_packet(&default_pat_packet())?;
+        writer.write_ts_packet(&default_pmt_packet())?;
 
         for packet in &packets {
-            writer.write_ts_packet(packet).unwrap();
+            writer.write_ts_packet(packet)?;
         }
 
         Ok(())
     }
 
-    pub fn push_video(&mut self, video: &avc::Packet) -> Result<(), Error> {
+    pub fn push_video(&mut self, video: &avc::Packet) -> Result<()> {
         use mpeg2ts::{
             ts::{AdaptationField, payload},
             es::StreamId,
             time::{ClockReference, Timestamp},
         };
 
-        let mut header = default_ts_header(VIDEO_ES_PID);
+        let mut header = default_ts_header(VIDEO_ES_PID)?;
         header.continuity_counter = self.video_continuity_counter;
 
         let mut buf = video.try_as_bytes()?.into_buf();
@@ -75,7 +75,7 @@ impl Buffer {
                 discontinuity_indicator: false,
                 random_access_indicator: true,
                 es_priority_indicator: false,
-                pcr: Some(ClockReference::new(video.timestamp() * 90).unwrap()),
+                pcr: Some(ClockReference::new(video.timestamp() * 90)?),
                 opcr: None,
                 splice_countdown: None,
                 transport_private_data: Vec::new(),
@@ -95,12 +95,12 @@ impl Buffer {
                     data_alignment_indicator: false,
                     copyright: false,
                     original_or_copy: false,
-                    pts: Some(Timestamp::new(video.presentation_timestamp() * 90).unwrap()),
+                    pts: Some(Timestamp::new(video.presentation_timestamp() * 90)?),
                     dts: None,
                     escr: None,
                 },
                 pes_packet_len: 0,
-                data: payload::Bytes::new(&pes_data).unwrap(),
+                data: payload::Bytes::new(&pes_data)?,
             })),
         };
 
@@ -113,7 +113,7 @@ impl Buffer {
             let packet = TsPacket {
                 header: header.clone(),
                 adaptation_field: None,
-                payload: Some(TsPayload::Raw(payload::Bytes::new(&pes_data).unwrap())),
+                payload: Some(TsPayload::Raw(payload::Bytes::new(&pes_data)?)),
             };
 
             self.packets.push(packet);
@@ -125,7 +125,7 @@ impl Buffer {
         Ok(())
     }
 
-    pub fn push_audio(&mut self, audio: &aac::Packet) -> Result<(), Error> {
+    pub fn push_audio(&mut self, audio: &aac::Packet) -> Result<()> {
         use mpeg2ts::{
             ts::payload,
             es::StreamId,
@@ -135,7 +135,7 @@ impl Buffer {
         let mut buf = audio.to_bytes().into_buf();
         let pes_data: Bytes = buf.by_ref().take(153).collect();
 
-        let mut header = default_ts_header(AUDIO_ES_PID);
+        let mut header = default_ts_header(AUDIO_ES_PID)?;
         header.continuity_counter = self.audio_continuity_counter;
 
         let packet = TsPacket {
@@ -148,12 +148,12 @@ impl Buffer {
                     data_alignment_indicator: false,
                     copyright: false,
                     original_or_copy: false,
-                    pts: Some(Timestamp::new(audio.presentation_timestamp() * 90).unwrap()),
+                    pts: Some(Timestamp::new(audio.presentation_timestamp() * 90)?),
                     dts: None,
                     escr: None,
                 },
                 pes_packet_len: 0,
-                data: payload::Bytes::new(&pes_data).unwrap(),
+                data: payload::Bytes::new(&pes_data)?,
             })),
         };
 
@@ -166,7 +166,7 @@ impl Buffer {
             let packet = TsPacket {
                 header: header.clone(),
                 adaptation_field: None,
-                payload: Some(TsPayload::Raw(payload::Bytes::new(&pes_data).unwrap())),
+                payload: Some(TsPayload::Raw(payload::Bytes::new(&pes_data)?)),
             };
 
             self.packets.push(packet);
@@ -180,23 +180,23 @@ impl Buffer {
 }
 
 
-fn default_ts_header(pid: u16) -> TsHeader {
+fn default_ts_header(pid: u16) -> Result<TsHeader> {
     use mpeg2ts::ts::TransportScramblingControl;
 
-    TsHeader {
+    Ok(TsHeader {
         transport_error_indicator: false,
         transport_priority: false,
-        pid: Pid::new(pid).unwrap(),
+        pid: Pid::new(pid)?,
         transport_scrambling_control: TransportScramblingControl::NotScrambled,
         continuity_counter: ContinuityCounter::new(),
-    }
+    })
 }
 
 fn default_pat_packet() -> TsPacket {
     use mpeg2ts::ts::{VersionNumber, payload::Pat, ProgramAssociation};
 
     TsPacket {
-        header: default_ts_header(0),
+        header: default_ts_header(0).unwrap(),
         adaptation_field: None,
         payload: Some(
             TsPayload::Pat(Pat {
@@ -205,7 +205,7 @@ fn default_pat_packet() -> TsPacket {
                 table: vec![
                     ProgramAssociation {
                         program_num: 1,
-                        program_map_pid: Pid::new(PMT_PID).unwrap()
+                        program_map_pid: Pid::new(PMT_PID).unwrap(),
                     }
                 ]
             })),
@@ -219,7 +219,7 @@ fn default_pmt_packet() -> TsPacket {
     };
 
     TsPacket {
-        header: default_ts_header(PMT_PID),
+        header: default_ts_header(PMT_PID).unwrap(),
         adaptation_field: None,
         payload: Some(
             TsPayload::Pmt(Pmt {

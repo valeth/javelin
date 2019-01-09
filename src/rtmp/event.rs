@@ -182,7 +182,7 @@ impl Handler {
         match result {
             Err(why) => {
                 error!("Error while accepting publishing request: {:?}", why);
-                return Err(Error::SessionError("Publish request failed".to_string()));
+                return Err(Error::SessionError("Publish request failed".into()));
             },
             Ok(results) => self.handle_server_session_results(results)?
         }
@@ -232,19 +232,19 @@ impl Handler {
 
             if let Some(ref metadata) = streams.get(app_name).unwrap().metadata {
                 let packet = client.session.send_metadata(stream_id, Rc::new(metadata.clone()))
-                    .map_err(|_| Error::SessionError("Failed to send metadata".to_string()))?;
+                    .map_err(|_| Error::SessionError("Failed to send metadata".into()))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
             if let Some(ref v_seq_h) = streams.get(app_name).unwrap().video_seq_header {
                 let packet = client.session.send_video_data(stream_id, v_seq_h.clone(), RtmpTimestamp::new(0), false)
-                    .map_err(|_| Error::SessionError("Failed to send video data".to_string()))?;
+                    .map_err(|_| Error::SessionError("Failed to send video data".into()))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
             if let Some(ref a_seq_h) = streams.get(app_name).unwrap().audio_seq_header {
                 let packet = client.session.send_audio_data(stream_id, a_seq_h.clone(), RtmpTimestamp::new(0), false)
-                    .map_err(|_| Error::SessionError("Failed to send audio data".to_string()))?;
+                    .map_err(|_| Error::SessionError("Failed to send audio data".into()))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
         }
@@ -268,7 +268,7 @@ impl Handler {
                 if let Some(watched_stream) = client.watched_stream() {
                     let packet = client.session
                         .send_metadata(watched_stream, Rc::new(metadata.clone()))
-                        .map_err(|_| Error::SessionError("Failed to send metadata".to_string()))?;
+                        .map_err(|_| Error::SessionError("Failed to send metadata".into()))?;
 
                     self.results.push_back(EventResult::Outbound(self.peer_id, packet));
                 }
@@ -286,9 +286,7 @@ impl Handler {
 
         let app_name = self.shared
             .app_name_from_stream_key(&stream_key)
-            .ok_or_else(|| {
-                Error::SessionError("No app for stream key".to_string())
-            })?;
+            .ok_or_else(|| Error::SessionError("No app for stream key".into()))?;
 
         let mut streams = self.shared.streams.write();
         if let Some(stream) = streams.get_mut(&app_name) {

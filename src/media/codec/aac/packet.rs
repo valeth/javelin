@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     Error,
+    Result,
     media::codec::SharedState,
 };
 
@@ -55,7 +56,7 @@ impl Metadata {
     {
         let header = buf.get_u8();
         let codec_id = header >> 4;
-        assert!(codec_id == 10, "Not an AAC bitstream, got id {}", codec_id);
+        assert_eq!(codec_id, 10, "Not an AAC bitstream, got id {}", codec_id);
 
         let rate = match header & 0b0000_1100 {
             0b0000_0000 => 5500,
@@ -116,7 +117,7 @@ pub struct Packet {
 }
 
 impl Packet {
-    pub fn try_from_bytes<B>(bytes: B, timestamp: u64, shared: &SharedState) -> Result<Self, Error>
+    pub fn try_from_bytes<B>(bytes: B, timestamp: u64, shared: &SharedState) -> Result<Self>
         where B: IntoBuf
     {
         let mut buf = bytes.into_buf();

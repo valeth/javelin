@@ -36,7 +36,7 @@ impl Writer {
         let playlist_path = stream_path.join("playlist.m3u8");
 
         if stream_path.exists() && !stream_path.is_dir() {
-            return Err(Error::Custom(format!("Path '{}' exists, but is not a directory", stream_path.display())));
+            return Err(Error::from(format!("Path '{}' exists, but is not a directory", stream_path.display())));
         } else {
             debug!("Creating HLS directory at '{:?}'", stream_path);
             fs::create_dir_all(&stream_path)?;
@@ -77,7 +77,7 @@ impl Writer {
             if timestamp >= self.next_write {
                 let filename = format!("{}-{}-{}.ts", "test", timestamp, self.keyframe_counter);
                 let path = self.stream_path.join(&filename);
-                self.buffer.write_to_file(&path).unwrap();
+                self.buffer.write_to_file(&path)?;
                 self.playlist.add_media_segment(filename, keyframe_duration);
                 self.next_write += self.write_interval;
             }
