@@ -43,7 +43,7 @@ impl Future for Server {
             let (sender, receiver) = mpsc::unbounded();
             request.send(sender).unwrap();
 
-            match Writer::create(app_name, receiver, self.shared.clone()) {
+            match Writer::create(app_name, receiver, &self.shared) {
                 Ok(writer) => { tokio::spawn(writer); },
                 Err(why) => error!("Failed to create writer: {:?}", why),
             }

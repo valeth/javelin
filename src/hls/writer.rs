@@ -27,7 +27,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn create(app_name: String, receiver: media::Receiver, shared: Shared) -> Result<Self> {
+    pub fn create(app_name: String, receiver: media::Receiver, shared: &Shared) -> Result<Self> {
         let write_interval = 2000; // milliseconds
         let next_write = write_interval; // milliseconds
 
@@ -51,7 +51,7 @@ impl Writer {
             keyframe_counter: 0,
             buffer: TsBuffer::new(),
             shared_state: media::codec::SharedState::new(),
-            playlist: Playlist::new(playlist_path, shared.clone()),
+            playlist: Playlist::new(playlist_path, shared),
             stream_path,
         })
     }

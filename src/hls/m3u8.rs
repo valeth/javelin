@@ -26,7 +26,7 @@ impl Playlist {
     const DEFAULT_TARGET_DURATION: f32 = 6.0;
     const MAX_PLAYLIST_DURATION: u64 = 30000; // milliseconds
 
-    pub fn new<P>(path: P, shared: Shared) -> Self
+    pub fn new<P>(path: P, shared: &Shared) -> Self
         where P: Into<PathBuf>
     {
         let mut playlist = MediaPlaylist::default();
