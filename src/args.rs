@@ -34,13 +34,13 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
 
     if cfg!(feature = "tls") {
         args = args
-        .arg(Arg::with_name("no_tls")
-             .long("no-tls")
-             .help("Disables TLS support"))
-        .arg(Arg::with_name("cert")
+        .arg(Arg::with_name("tls_enabled")
+             .long("enable-tls")
+             .requires("tls_cert")
+             .help("Enables TLS support"))
+        .arg(Arg::with_name("tls_cert")
               .long("tls-cert")
               .value_name("CERTIFICATE")
-              .required_unless("no_tls")
               .help("The TLS certificate to use")
               .takes_value(true))
     }

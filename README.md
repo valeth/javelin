@@ -17,7 +17,7 @@ Supported outputs:
 ```sh
 cargo install javelin
 # Make sure your $CARGO_HOME/bin is in your $PATH
-javelin --no-tls --permit-stream-key="mysecretstreamkey"
+javelin --permit-stream-key="mysecretstreamkey"
 ```
 
 ### Via Docker

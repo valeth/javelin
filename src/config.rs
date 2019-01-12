@@ -28,10 +28,10 @@ pub struct TlsConfig {
 #[cfg(feature = "tls")]
 impl TlsConfig {
     pub fn new(args: &ArgMatches) -> Self {
-        let enabled = !args.is_present("no_tls");
+        let enabled = args.is_present("tls_enabled");
 
         if enabled {
-            let cert_path = args.value_of("cert")
+            let cert_path = args.value_of("tls_cert")
                 .map(|v| Some(PathBuf::from(v)))
                 .unwrap_or(None);
             let cert_password = Self::cert_password();

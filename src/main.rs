@@ -32,9 +32,9 @@ fn main() {
         init_logger!(SimpleLogger).unwrap_or_else(|err|
             eprintln!("Failed to initialize logger: {}", err)));
 
-    tokio::run(lazy(|| {
-        let shared = Shared::new();
+    let shared = Shared::new();
 
+    tokio::run(lazy(move || {
         #[cfg(feature = "hls")]
         spawn_hls_server(shared.clone());
 
