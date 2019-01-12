@@ -1,11 +1,13 @@
 use std::{
     net::SocketAddr,
     io::ErrorKind as IoErrorKind,
+    sync::atomic::{AtomicUsize, Ordering},
 };
 use log::{info, error};
+use futures::try_ready;
 use tokio::{
     prelude::*,
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream, tcp::Incoming},
 };
 #[cfg(feature = "tls")]
 use native_tls;
@@ -19,10 +21,14 @@ use crate::{
 use super::{Peer, BytesStream};
 
 
+type ClientId = u64;
+
+
 pub struct Server {
     shared: Shared,
-    addr: SocketAddr,
-    listener: TcpListener,
+    _addr: SocketAddr,
+    listener: Incoming,
+    client_id: AtomicUsize,
 }
 
 impl Server {
@@ -30,21 +36,36 @@ impl Server {
         let addr = shared.config.read().addr;
         let listener = TcpListener::bind(&addr).expect("Failed to bind TCP listener");
 
-        Self { shared, addr, listener }
+        info!("Starting up Javelin RTMP server on {}", addr);
+
+        Self {
+            shared,
+            _addr: addr,
+            listener: listener.incoming(),
+            client_id: AtomicUsize::default(),
+        }
     }
 
-    pub fn start(self) -> impl Future<Item = (), Error = ()> {
-        let shared = self.shared.clone();
+    fn client_id(&self) -> ClientId {
+        self.client_id.load(Ordering::SeqCst) as ClientId
+    }
 
-        info!("Starting up Javelin RTMP server on {}", self.addr);
+    fn increment_client_id(&mut self) {
+        self.client_id.fetch_add(1, Ordering::SeqCst);
+    }
+}
 
-        self.listener.incoming()
-            .zip(stream::iter_ok(0u64..))
-            .map_err(|err| error!("{}", err))
-            .for_each(move |(tcp_stream, id)| {
-                spawner(id, tcp_stream, shared.clone());
-                Ok(())
-            })
+impl Future for Server {
+    type Item = ();
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        while let Some(tcp_stream) = try_ready!(self.listener.poll().map_err(|err| error!("{}", err))) {
+            spawner(self.client_id(), tcp_stream, self.shared.clone());
+            self.increment_client_id();
+        }
+
+        Ok(Async::Ready(()))
     }
 }
 
