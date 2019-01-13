@@ -1,17 +1,12 @@
 use std::{
     thread,
     net::SocketAddr,
-    fs::File,
-    io::Read,
 };
-use log::error;
 use warp::{
     self,
-    path,
     Filter,
-    http::{Response, StatusCode}
 };
-use crate::{Shared, Result};
+use crate::Shared;
 
 
 pub struct WebServer {
@@ -30,46 +25,16 @@ impl WebServer {
 }
 
 
-// TODO: routes for TS files
+#[allow(clippy::needless_pass_by_value)] // shut up
 fn server(shared: Shared) {
-    let hls_path = warp::path!("hls" / String)
-        .map(move |app_name| {
-            let mut builder = Response::builder();
-
-            let body = match hls_playlist(app_name, &shared) {
-                Ok(content) => {
-                    builder
-                        .header("content-type", "application/vnd.apple.mpegurl")
-                        .status(StatusCode::OK);
-                    content
-                },
-                Err(why) => {
-                    builder.status(StatusCode::NOT_FOUND);
-                    error!("{:?}", why);
-                    String::new()
-                }
-            };
-
-            builder
-                .header("access-control-allow-origin", "*")
-                .body(body)
-        });
-
-    let routes = warp::get2().and(hls_path);
-
     let addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
-    warp::serve(routes).run(addr);
-}
 
-fn hls_playlist(app_name: String, shared: &Shared) -> Result<String> {
-    let config = shared.config.read();
-    let playlist = config.hls.root_dir
-        .join(app_name)
-        .join("playlist.m3u8");
+    let hls_root = {
+        let config = shared.config.read();
+        config.hls.root_dir.clone()
+    };
 
-    let mut file = File::open(playlist)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
+    let hls_files = warp::path("hls").and(warp::fs::dir(hls_root));
 
-    Ok(content)
+    warp::serve(hls_files).run(addr);
 }
