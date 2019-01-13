@@ -9,10 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [0.3.2]
+## Added
+- Internal HTTP file server with simple JSON API (currently just active streams).
+
+## Changed
+- File cleanup is no longer done in batches.
+- TLS support is disabled by default.
+- HLS directory is now cleared every time on stream publish start.
+
+
+## [0.3.1]
+## Changed
+- Just some minor tweaks.
+
+
 ## [0.3.0]
 
 ### Added
-- Optional support for HLS streaming output
+- Optional support for HLS streaming output.
 
 
 ## [0.2.3]
@@ -58,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- links -->
 
 [Unreleased]: https://gitlab.com/valeth/javelin/tree/develop
+[0.3.2]: https://gitlab.com/valeth/javelin/tree/0.3.2
+[0.3.1]: https://gitlab.com/valeth/javelin/tree/0.3.1
 [0.3.0]: https://gitlab.com/valeth/javelin/tree/0.3.0
 [0.2.3]: https://gitlab.com/valeth/javelin/tree/0.2.3
 [0.2.2]: https://gitlab.com/valeth/javelin/tree/0.2.2
