@@ -12,14 +12,14 @@ variables:
 
 .write_cache:
   cache:
-    key: "$CI_PROJECT_PATH_SLUG-rustup"
+    key: "$CI_COMMIT_REF_SLUG-rustup"
     paths:
       - .rustup
       - .cargo
 
 .read_cache:
   cache:
-    key: "$CI_PROJECT_PATH_SLUG-rustup"
+    key: "$CI_COMMIT_REF_SLUG-rustup"
     paths:
       - .rustup
       - .cargo
@@ -56,9 +56,6 @@ install-rust:
     - rustup install ${RUST_STABLE_VERSION:-stable}
     - rustup install nightly
     - rustup component add clippy
-  only:
-    variables:
-      - $RUSTUP_UPDATE == "true"
 
 build-stable:
   extends: .toolchain-stable
@@ -67,6 +64,7 @@ build-stable:
     - cargo build --no-default-features
     - cargo build --features "tls"
     - cargo build --features "hls"
+    - cargo build --features "web"
     - cargo build
     - cargo test --tests
   only:
