@@ -3,6 +3,7 @@ use log::{debug, error, warn};
 use futures::try_ready;
 use tokio::prelude::*;
 use bytes::Bytes;
+use chrono::Utc;
 use super::{
     transport_stream::Buffer as TsBuffer,
     m3u8::Playlist,
@@ -35,12 +36,17 @@ impl Writer {
         let stream_path = hls_root.join(app_name);
         let playlist_path = stream_path.join("playlist.m3u8");
 
-        if stream_path.exists() && !stream_path.is_dir() {
-            return Err(Error::from(format!("Path '{}' exists, but is not a directory", stream_path.display())));
-        } else {
-            debug!("Creating HLS directory at '{:?}'", stream_path);
-            fs::create_dir_all(&stream_path)?;
+        if stream_path.exists() {
+            if !stream_path.is_dir() {
+                return Err(Error::from(format!("Path '{}' exists, but is not a directory", stream_path.display())));
+            }
+
+            debug!("Cleaning up old streaming directory");
+            fs::remove_dir_all(&stream_path)?;
         }
+
+        debug!("Creating HLS directory at '{:?}'", stream_path);
+        fs::create_dir_all(&stream_path)?;
 
 
         Ok(Self {
@@ -75,7 +81,7 @@ impl Writer {
             }
 
             if timestamp >= self.next_write {
-                let filename = format!("{}-{}-{}.ts", "test", timestamp, self.keyframe_counter);
+                let filename = format!("{}-{}.ts", Utc::now().timestamp(), self.keyframe_counter);
                 let path = self.stream_path.join(&filename);
                 self.buffer.write_to_file(&path)?;
                 self.playlist.add_media_segment(filename, keyframe_duration);
