@@ -1,3 +1,5 @@
+[![javelin][project_banner]][website_url]
+
 # Javelin RTMP Server
 
 Streaming server written in Rust.
@@ -31,3 +33,9 @@ docker run --tty -p 1935:1935 \
 ```
 
 > Try `javelin --help` for more command line options.
+
+
+<!-- links -->
+
+[project_banner]: https://files.valeth.info/javelin_banner.png
+[website_url]: https://valeth.info
