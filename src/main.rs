@@ -11,6 +11,9 @@ mod args;
 #[cfg(feature = "hls")]
 mod hls;
 
+#[cfg(feature = "web")]
+mod web;
+
 
 use futures::future::lazy;
 use simplelog::{Config, SimpleLogger, TermLogger, LevelFilter};
@@ -34,6 +37,9 @@ fn main() {
 
     let shared = Shared::new();
 
+    #[cfg(feature = "web")]
+    spawn_web_server(shared.clone());
+
     tokio::run(lazy(move || {
         #[cfg(feature = "hls")]
         spawn_hls_server(shared.clone());
@@ -52,4 +58,9 @@ fn spawn_hls_server(mut shared: Shared) {
     shared.set_hls_sender(hls_sender);
     tokio::spawn(hls_server);
     tokio::spawn(file_cleaner);
+}
+
+#[cfg(feature = "web")]
+fn spawn_web_server(shared: Shared) {
+    web::WebServer::new(shared).start();
 }
