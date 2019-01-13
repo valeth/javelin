@@ -18,13 +18,14 @@ use crate::{
 pub struct Playlist {
     file_path: PathBuf,
     current_duration: u64,
+    cleanup_started: bool,
     playlist: MediaPlaylist,
     file_cleaner: file_cleaner::Sender,
 }
 
 impl Playlist {
     const DEFAULT_TARGET_DURATION: f32 = 6.0;
-    const MAX_PLAYLIST_DURATION: u64 = 30000; // milliseconds
+    const PLAYLIST_CACHE_DURATION: u64 = 30000; // milliseconds
 
     pub fn new<P>(path: P, shared: &Shared) -> Self
         where P: Into<PathBuf>
@@ -39,6 +40,7 @@ impl Playlist {
         Self {
             file_path: path.into(),
             current_duration: 0,
+            cleanup_started: false,
             playlist,
             file_cleaner,
         }
@@ -48,15 +50,14 @@ impl Playlist {
         self.playlist.target_duration = (duration as f64 / 1000.0) as f32;
     }
 
-    fn schedule_for_deletion(&mut self) {
-        let segments: Vec<MediaSegment> = self.playlist.segments.drain(..).collect();
-        let items: Vec<_> = segments.iter()
-            .map(|seg| self.hls_root().join(&seg.uri))
+    fn schedule_for_deletion(&mut self, amount: usize) {
+        let segments_to_delete: Vec<_> = self.playlist.segments.drain(..amount).collect();
+        let paths: Vec<_> = segments_to_delete.iter()
+            .map(|seg| self.file_path.parent().unwrap().join(&seg.uri))
             .collect();
 
-        self.playlist.media_sequence += items.len() as i32;
-        self.file_cleaner.unbounded_send((Duration::from_millis(self.current_duration), items)).unwrap();
-        self.current_duration = 0;
+        self.playlist.media_sequence += paths.len() as i32;
+        self.file_cleaner.unbounded_send((Duration::from_millis(Self::PLAYLIST_CACHE_DURATION), paths)).unwrap();
     }
 
     pub fn add_media_segment<S>(&mut self, uri: S, duration: u64)
@@ -67,11 +68,15 @@ impl Playlist {
         segment.title = Some("".into());
         segment.uri = uri.into();
 
-        if self.current_duration >= Self::MAX_PLAYLIST_DURATION {
-            self.schedule_for_deletion();
+
+        if self.cleanup_started {
+            self.schedule_for_deletion(1);
+        } else if self.current_duration >= Self::PLAYLIST_CACHE_DURATION {
+            self.cleanup_started = true;
+        } else {
+            self.current_duration += duration;
         }
 
-        self.current_duration += duration;
         self.playlist.segments.push(segment);
 
         if let Err(why) = self.atomic_update() {
@@ -111,7 +116,7 @@ impl Playlist {
 
 impl Drop for Playlist {
     fn drop(&mut self) {
-        self.schedule_for_deletion();
+        self.schedule_for_deletion(self.playlist.segments.len());
         self.playlist.end_list = true;
 
         if let Err(why) = self.atomic_update() {

@@ -11,9 +11,7 @@ use tokio::{
 };
 use crate::shared::Shared;
 
-
 type Batch = Vec<PathBuf>;
-
 type Message = (Duration, Batch);
 pub type Sender = UnboundedSender<Message>;
 type Receiver = UnboundedReceiver<Message>;
@@ -39,10 +37,10 @@ impl FileCleaner {
     fn get_new(&mut self) {
         for _ in 0..10 {
             match self.receiver.poll() {
-                Ok(Async::Ready(Some((duration, batch)))) => {
-                    let timestamp = Instant::now() + duration * 2;
-                    debug!("Cleanup queued at {:?}", timestamp);
-                    self.items.insert_at(batch, timestamp);
+                Ok(Async::Ready(Some((duration, files)))) => {
+                    let timestamp = Instant::now() + ((duration / 100) * 150);
+                    debug!("{} files queued for cleanup at {:?}", files.len(), timestamp);
+                    self.items.insert_at(files, timestamp);
                 },
                 _ => break,
             }
@@ -61,7 +59,7 @@ impl Future for FileCleaner {
             match self.items.poll() {
                 Ok(Async::NotReady) => return Ok(Async::NotReady),
                 Ok(Async::Ready(None)) => return Ok(Async::NotReady),
-                Ok(Async::Ready(Some(paths))) => remove_files(paths.into_inner()),
+                Ok(Async::Ready(Some(files))) => remove_files(&files.into_inner()),
                 Err(why) => {
                     error!("{:?}", why);
                     return Err(());
@@ -71,13 +69,17 @@ impl Future for FileCleaner {
     }
 }
 
-
-fn remove_files(paths: Vec<PathBuf>) {
+fn remove_files(paths: &[PathBuf]) {
     debug!("Cleaning up {} files", paths.len());
 
     for path in paths {
-        if let Err(why) = fs::remove_file(path) {
-            error!("Failed to remove file: {}", why);
-        }
+        remove_file(path);
+    }
+}
+
+
+fn remove_file(path: &PathBuf) {
+    if let Err(why) = fs::remove_file(path) {
+        error!("Failed to remove file '{}': {}", path.display(), why);
     }
 }
