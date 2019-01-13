@@ -33,5 +33,5 @@ WORKDIR /app
 
 COPY --from=build /build/out/javelin ./javelin
 
-EXPOSE 1935
-ENTRYPOINT ["/app/javelin", "--no-tls", "--hls-root=/var/data"]
+EXPOSE 1935 8080
+ENTRYPOINT ["/app/javelin", "--hls-root=/var/data"]
