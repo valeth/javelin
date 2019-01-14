@@ -62,9 +62,9 @@ build-stable:
   stage: build
   script:
     - cargo build --no-default-features
-    - cargo build --features "tls"
-    - cargo build --features "hls"
-    - cargo build --features "web"
+    - cargo build --no-default-features --features "tls"
+    - cargo build --no-default-features --features "hls"
+    - cargo build --no-default-features --features "web"
     - cargo build
     - cargo test --tests
   only:
