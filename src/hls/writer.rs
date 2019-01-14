@@ -36,16 +36,11 @@ impl Writer {
         let stream_path = hls_root.join(app_name);
         let playlist_path = stream_path.join("playlist.m3u8");
 
-        if stream_path.exists() {
-            if !stream_path.is_dir() {
-                return Err(Error::from(format!("Path '{}' exists, but is not a directory", stream_path.display())));
-            }
-
-            debug!("Cleaning up old streaming directory");
-            fs::remove_dir_all(&stream_path)?;
+        if stream_path.exists() && !stream_path.is_dir() {
+            return Err(Error::from(format!("Path '{}' exists, but is not a directory", stream_path.display())));
         }
 
-        debug!("Creating HLS directory at '{:?}'", stream_path);
+        debug!("Creating HLS directory at '{}'", stream_path.display());
         fs::create_dir_all(&stream_path)?;
 
 

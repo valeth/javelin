@@ -1,4 +1,5 @@
-use log::error;
+use std::{fs, path::Path};
+use log::{debug, error, info};
 use tokio::prelude::*;
 use futures::{
     try_ready,
@@ -7,6 +8,7 @@ use futures::{
 use crate::{
     media,
     shared::Shared,
+    Result,
 };
 use super::writer::Writer;
 
@@ -26,6 +28,14 @@ pub struct Server {
 impl Server {
     pub fn new(shared: Shared) -> Self {
         let (sender, receiver) = mpsc::unbounded();
+
+        let hls_root = shared.config.read().hls.root_dir.clone();
+        info!("HLS directory located at '{}'", hls_root.display());
+
+        debug!("Attempting cleanup of HLS directory");
+        directory_cleanup(hls_root).expect("Failed to clean up HLS directory");
+        info!("HLS directory purged");
+
         Self { sender, receiver, shared }
     }
 
@@ -51,4 +61,26 @@ impl Future for Server {
 
         Ok(Async::Ready(()))
     }
+}
+
+
+fn directory_cleanup<P: AsRef<Path>>(path: P) -> Result<()> {
+    let path = path.as_ref();
+
+    if path.exists() {
+        if path.is_dir() {
+            for entry in fs::read_dir(path)? {
+                let child_path = entry?.path();
+                if child_path.is_dir() {
+                    fs::remove_dir_all(child_path)?;
+                } else {
+                    fs::remove_file(child_path)?;
+                }
+            }
+        } else {
+            panic!("HLS root is not a directory, aborting");
+        }
+    }
+
+    Ok(())
 }
