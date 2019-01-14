@@ -50,14 +50,17 @@ impl Playlist {
         self.playlist.target_duration = (duration as f64 / 1000.0) as f32;
     }
 
-    fn schedule_for_deletion(&mut self, amount: usize) {
+    fn schedule_for_deletion(&mut self, amount: usize, delete_after: u64) {
         let segments_to_delete: Vec<_> = self.playlist.segments.drain(..amount).collect();
         let paths: Vec<_> = segments_to_delete.iter()
-            .map(|seg| self.file_path.parent().unwrap().join(&seg.uri))
+            .map(|seg| {
+                self.current_duration -= (seg.duration * 1000.0) as u64;
+                self.file_path.parent().unwrap().join(&seg.uri)
+            })
             .collect();
 
         self.playlist.media_sequence += paths.len() as i32;
-        self.file_cleaner.unbounded_send((Duration::from_millis(Self::PLAYLIST_CACHE_DURATION), paths)).unwrap();
+        self.file_cleaner.unbounded_send((Duration::from_millis(delete_after), paths)).unwrap();
     }
 
     pub fn add_media_segment<S>(&mut self, uri: S, duration: u64)
@@ -65,18 +68,17 @@ impl Playlist {
     {
         let mut segment = MediaSegment::empty();
         segment.duration = (duration as f64 / 1000.0) as f32;
-        segment.title = Some("".into());
+        segment.title = Some("".into()); // adding empty title here, because implementation is broken
         segment.uri = uri.into();
 
 
         if self.cleanup_started {
-            self.schedule_for_deletion(1);
+            self.schedule_for_deletion(1, Self::PLAYLIST_CACHE_DURATION);
         } else if self.current_duration >= Self::PLAYLIST_CACHE_DURATION {
             self.cleanup_started = true;
-        } else {
-            self.current_duration += duration;
         }
 
+        self.current_duration += duration;
         self.playlist.segments.push(segment);
 
         if let Err(why) = self.atomic_update() {
@@ -116,7 +118,7 @@ impl Playlist {
 
 impl Drop for Playlist {
     fn drop(&mut self) {
-        self.schedule_for_deletion(self.playlist.segments.len());
+        self.schedule_for_deletion(self.playlist.segments.len(), self.current_duration);
         self.playlist.end_list = true;
 
         if let Err(why) = self.atomic_update() {
