@@ -60,7 +60,7 @@ version = "^1.0"
 default = ["tls", "hls", "web"]
 tls = ["native-tls", "tokio-tls"]
 hls = ["mpeg2ts", "m3u8-rs", "tempfile"]
-web = ["warp", "serde", "serde_json"]
+web = ["warp", "serde", "serde_json", "hls"]
 
 [profile.release]
 opt-level = 3
