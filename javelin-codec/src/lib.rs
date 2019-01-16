@@ -1,13 +1,16 @@
+pub(crate) mod utils;
 pub mod avc;
 pub mod aac;
+pub mod error;
 
 
 use std::sync::Arc;
 use parking_lot::RwLock;
-use self::{
+pub(crate) use self::{
     avc::dcr::DecoderConfigurationRecord,
     aac::config::AudioSpecificConfiguration,
 };
+pub use self::error::{Error, Result};
 
 
 #[derive(Debug, Clone)]

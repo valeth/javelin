@@ -1,0 +1,15 @@
+[package]
+authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
+name = "javelin-codec"
+description = "Codecs for the Javelin streaming server"
+keywords = ["video", "audio", "codec"]
+license = "GPL-3.0"
+repository = "https://gitlab.com/valeth/javelin.git"
+version = "0.3.3"
+edition = "2018"
+
+[dependencies]
+bytes = "^0.4"
+byteorder = "^1.2"
+parking_lot = "^0.7"
+log = "^0.4"

@@ -7,7 +7,7 @@ use super::{
 use crate::{
     Error,
     Result,
-    media::codec::SharedState,
+    SharedState,
 };
 
 

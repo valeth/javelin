@@ -4,13 +4,15 @@ use futures::try_ready;
 use tokio::prelude::*;
 use bytes::Bytes;
 use chrono::Utc;
+#[cfg(feature = "hls")]
+use javelin_codec::{avc, aac};
 use super::{
     transport_stream::Buffer as TsBuffer,
     m3u8::Playlist,
 };
 use crate::{
     shared::Shared,
-    media::{self, Media, avc, aac},
+    media::{self, Media},
     error::{Error, Result},
 };
 
@@ -22,7 +24,7 @@ pub struct Writer {
     last_keyframe: u64,
     keyframe_counter: usize,
     buffer: TsBuffer,
-    shared_state: media::codec::SharedState,
+    shared_state: javelin_codec::SharedState,
     playlist: Playlist,
     stream_path: PathBuf,
 }
@@ -51,7 +53,7 @@ impl Writer {
             last_keyframe: 0,
             keyframe_counter: 0,
             buffer: TsBuffer::new(),
-            shared_state: media::codec::SharedState::new(),
+            shared_state: javelin_codec::SharedState::new(),
             playlist: Playlist::new(playlist_path, shared),
             stream_path,
         })

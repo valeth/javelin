@@ -10,10 +10,8 @@ use mpeg2ts::{
     },
     pes::PesHeader,
 };
-use crate::{
-    Result,
-    media::codec::{avc, aac},
-};
+use javelin_codec::{avc, aac};
+use crate::Result;
 
 
 const PMT_PID: u16 = 256;

@@ -5,7 +5,7 @@ use super::{
     bitstream::Bitstream,
 };
 use crate::{
-    media::codec::SharedState,
+    SharedState,
     Error,
     Result,
 };

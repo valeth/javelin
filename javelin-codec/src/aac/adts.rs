@@ -114,7 +114,7 @@ impl Into<Bytes> for AudioDataTransportStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::media::aac::{
+    use crate::aac::{
         config::AudioObjectType,
         packet::AudioChannel,
     };

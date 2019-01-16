@@ -1,5 +1,3 @@
-#![cfg(feature = "hls")]
-
 use bytes::Buf;
 use byteorder::{ReadBytesExt, BigEndian};
 use crate::{Error, Result};

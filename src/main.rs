@@ -1,7 +1,6 @@
 #![warn(clippy::all)]
 
 mod error;
-mod utils;
 mod shared;
 mod config;
 mod media;

@@ -2,6 +2,8 @@ use std::{io, result};
 use rml_rtmp::sessions::ServerSessionError as RtmpSessionError;
 #[cfg(feature = "hls")]
 use mpeg2ts::Error as TransportStreamError;
+#[cfg(feature = "hls")]
+use javelin_codec::Error as CodecError;
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -15,17 +17,9 @@ pub enum Error {
     RequestError,
     SessionError(String),
     #[cfg(feature = "hls")]
-    ParseError(String),
-    #[cfg(feature = "hls")]
-    NotEnoughData,
-    #[cfg(feature = "hls")]
-    DecoderConfigurationRecordMissing,
-    #[cfg(feature = "hls")]
-    AudioSpecificConfigurationMissing,
-    #[cfg(feature = "hls")]
-    UnsupportedConfigurationRecordVersion(u8),
-    #[cfg(feature = "hls")]
     TransportStreamError(TransportStreamError),
+    #[cfg(feature = "hls")]
+    CodecError(CodecError)
 }
 
 impl From<io::Error> for Error {
@@ -44,6 +38,13 @@ impl From<RtmpSessionError> for Error {
 impl From<TransportStreamError> for Error {
     fn from(err: TransportStreamError) -> Self {
         Error::TransportStreamError(err)
+    }
+}
+
+#[cfg(feature = "hls")]
+impl From<CodecError> for Error {
+    fn from(err: CodecError) -> Self {
+        Error::CodecError(err)
     }
 }
 
