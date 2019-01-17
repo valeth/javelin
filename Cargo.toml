@@ -2,7 +2,8 @@
 authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 name = "javelin"
 description = "Simple streaming server"
-keywords = ["rtmp", "streaming", "media"]
+keywords = ["rtmp", "hls", "live-streaming", "media"]
+categories = ["multimedia", "multimedia::audio", "multimedia::video"]
 license = "GPL-3.0"
 readme = "README.md"
 repository = "https://gitlab.com/valeth/javelin.git"
