@@ -20,7 +20,6 @@ bytes = "^0.4"
 simplelog = "^0.5"
 parking_lot = "^0.7"
 futures = "^0.1"
-tokio = "^0.1"
 rml_rtmp = "^0.2"
 clap = "~2.32"
 chrono = "^0.4"
@@ -28,6 +27,11 @@ chrono = "^0.4"
 [dependencies.log]
 version = "^0.4"
 features = ["max_level_debug", "release_max_level_info"]
+
+[dependencies.tokio]
+version = "^0.1"
+default-features = false
+features = ["rt-full", "io", "timer", "tcp"]
 
 [dependencies.native-tls]
 optional = true
