@@ -1,6 +1,5 @@
 use std::{
     error::Error as StdError,
-    net::SocketAddr,
     thread,
 };
 use warp::{
@@ -43,7 +42,10 @@ impl Server {
 
 
 fn server(shared: Shared) {
-    let addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
+    let addr = {
+        let config = shared.config.read();
+        config.web.addr
+    };
 
     let hls_root = {
         let config = shared.config.read();

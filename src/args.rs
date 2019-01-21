@@ -14,13 +14,15 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
         .about(crate_description!())
         .arg(Arg::with_name("bind")
             .short("b")
-            .long("bind")
+            .long("rtmp-bind")
+            .alias("bind")
             .value_name("ADDRESS")
             .help("Host address to bind to")
             .takes_value(true))
         .arg(Arg::with_name("port")
             .short("p")
-            .long("port")
+            .long("rtmp-port")
+            .alias("port")
             .value_name("PORT")
             .help("Port to listen on")
             .takes_value(true))
@@ -51,6 +53,20 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
             .long("hls-root")
             .value_name("PATH")
             .help("The directory where stream output will be placed")
+            .takes_value(true))
+    }
+
+    if cfg!(feature = "web") {
+        args = args
+        .arg(Arg::with_name("http_bind")
+            .long("http-bind")
+            .value_name("ADDRESS")
+            .help("The web server address")
+            .takes_value(true))
+        .arg(Arg::with_name("http_port")
+            .long("http-port")
+            .value_name("PORT")
+            .help("The web server listening port")
             .takes_value(true))
     }
 

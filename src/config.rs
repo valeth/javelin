@@ -74,6 +74,24 @@ impl HlsConfig {
 
 
 #[derive(Debug, Clone)]
+#[cfg(feature = "web")]
+pub struct WebConfig {
+    pub addr: SocketAddr,
+}
+
+#[cfg(feature = "web")]
+impl WebConfig {
+    pub fn new(args: &ArgMatches) -> Self {
+        let host = args.value_of("http_bind").unwrap_or("0.0.0.0");
+        let port = args.value_of("http_port").unwrap_or("8080");
+        let addr = format!("{}:{}", host, port).parse().expect("Invalid address or port name for web server");
+
+        Self { addr }
+    }
+}
+
+
+#[derive(Debug, Clone)]
 pub struct Config {
     pub addr: SocketAddr,
     pub permitted_stream_keys: HashSet<String>,
@@ -81,6 +99,8 @@ pub struct Config {
     pub tls: TlsConfig,
     #[cfg(feature = "hls")]
     pub hls: HlsConfig,
+    #[cfg(feature = "web")]
+    pub web: WebConfig,
 }
 
 impl Config {
@@ -103,6 +123,8 @@ impl Config {
             tls: TlsConfig::new(&matches),
             #[cfg(feature = "hls")]
             hls: HlsConfig::new(&matches),
+            #[cfg(feature = "web")]
+            web: WebConfig::new(&matches),
         }
     }
 }
