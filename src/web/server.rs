@@ -17,6 +17,15 @@ use super::api::{
 use crate::Shared;
 
 
+macro_rules! json_error_response {
+    ($code:expr, $message:expr) => {{
+        let json = json!({ "error": $message });
+        let reply = warp::reply::json(&json);
+        Ok(warp::reply::with_status(reply, $code))
+    }};
+}
+
+
 pub struct Server {
     shared: Shared,
 }
@@ -56,14 +65,9 @@ fn server(shared: Shared) {
 
 fn error_handler(err: Rejection) -> Result<impl Reply, Rejection> {
     match err.find_cause() {
-        Some(e @ ApiError::NoSuchResource) => {
-            let code = StatusCode::NOT_FOUND;
-            let json = json!({
-                "code": code.as_u16(),
-                "error": e.description()
-            });
-            let reply = warp::reply::json(&json);
-            Ok(warp::reply::with_status(reply, code))
+        | Some(e @ ApiError::NoSuchResource)
+        | Some(e @ ApiError::StreamNotFound) => {
+            json_error_response!(StatusCode::NOT_FOUND, e.description())
         },
         None => Err(err)
     }

@@ -23,7 +23,10 @@ parking_lot = "^0.7"
 futures = "^0.1"
 rml_rtmp = "^0.2"
 clap = "~2.32"
-chrono = "^0.4"
+
+[dependencies.chrono]
+version = "^0.4"
+features = ["serde"]
 
 [dependencies.log]
 version = "^0.4"

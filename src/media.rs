@@ -6,6 +6,7 @@ use rml_rtmp::{
 };
 #[cfg(feature = "hls")]
 use futures::sync::mpsc;
+use chrono::prelude::{DateTime, Utc};
 
 
 #[cfg(feature = "hls")]
@@ -54,6 +55,7 @@ pub struct Channel {
     pub metadata: Option<StreamMetadata>,
     pub video_seq_header: Option<Bytes>,
     pub audio_seq_header: Option<Bytes>,
+    pub publish_start: Option<DateTime<Utc>>,
 }
 
 impl Channel {
@@ -65,6 +67,7 @@ impl Channel {
             metadata: None,
             video_seq_header: None,
             audio_seq_header: None,
+            publish_start: None,
         }
     }
 
@@ -75,6 +78,7 @@ impl Channel {
     pub fn set_publisher(&mut self, publisher_id: u64, stream_key: String) {
         self.publisher = Some(publisher_id);
         self.stream_key = Some(stream_key);
+        self.publish_start = Some(Utc::now());
     }
 
     pub fn add_watcher(&mut self, watcher_id: u64) {
