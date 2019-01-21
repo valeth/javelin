@@ -77,16 +77,19 @@ impl HlsConfig {
 #[cfg(feature = "web")]
 pub struct WebConfig {
     pub addr: SocketAddr,
+    pub enabled: bool,
 }
 
 #[cfg(feature = "web")]
 impl WebConfig {
     pub fn new(args: &ArgMatches) -> Self {
+        let enabled = !args.is_present("http_disabled");
+
         let host = args.value_of("http_bind").unwrap_or("0.0.0.0");
         let port = args.value_of("http_port").unwrap_or("8080");
         let addr = format!("{}:{}", host, port).parse().expect("Invalid address or port name for web server");
 
-        Self { addr }
+        Self { addr, enabled }
     }
 }
 

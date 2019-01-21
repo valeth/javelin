@@ -61,5 +61,12 @@ fn spawn_hls_server(mut shared: Shared) {
 
 #[cfg(feature = "web")]
 fn spawn_web_server(shared: Shared) {
-    web::Server::new(shared).start();
+    let enabled = {
+        let config = shared.config.read();
+        config.web.enabled
+    };
+
+    if enabled {
+        web::Server::new(shared).start();
+    }
 }

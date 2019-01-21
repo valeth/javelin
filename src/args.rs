@@ -68,6 +68,9 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
             .value_name("PORT")
             .help("The web server listening port")
             .takes_value(true))
+        .arg(Arg::with_name("http_disabled")
+            .long("disable-http")
+            .help("Disables the integrated web server"))
     }
 
     args.get_matches()
