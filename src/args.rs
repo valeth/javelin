@@ -54,6 +54,9 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
             .value_name("PATH")
             .help("The directory where stream output will be placed")
             .takes_value(true))
+        .arg(Arg::with_name("hls_disabled")
+            .long("disable-hls")
+            .help("Disables HLS support"))
     }
 
     if cfg!(feature = "web") {

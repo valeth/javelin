@@ -51,19 +51,26 @@ fn main() {
 
 #[cfg(feature = "hls")]
 fn spawn_hls_server(mut shared: Shared) {
-    let hls_server = hls::Server::new(shared.clone());
-    let hls_sender = hls_server.sender();
-    let file_cleaner = hls::file_cleaner::FileCleaner::new(shared.clone());
-    shared.set_hls_sender(hls_sender);
-    tokio::spawn(hls_server);
-    tokio::spawn(file_cleaner);
+    let enabled = {
+        let config = shared.config.read();
+        config.hls.enabled
+    };
+
+    if enabled {
+        let hls_server = hls::Server::new(shared.clone());
+        let hls_sender = hls_server.sender();
+        let file_cleaner = hls::file_cleaner::FileCleaner::new(shared.clone());
+        shared.set_hls_sender(hls_sender);
+        tokio::spawn(hls_server);
+        tokio::spawn(file_cleaner);
+    }
 }
 
 #[cfg(feature = "web")]
 fn spawn_web_server(shared: Shared) {
     let enabled = {
         let config = shared.config.read();
-        config.web.enabled
+        config.hls.enabled && config.web.enabled
     };
 
     if enabled {
