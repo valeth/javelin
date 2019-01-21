@@ -30,29 +30,34 @@ impl Display for Error {
     }
 }
 
+
 pub(crate) fn api(shared: Shared) -> BoxedFilter<(impl Reply,)> {
-    warp::path("active-streams")
-        .map(move || {
-            let json = json!({
-                "streams": active_streams(&shared)
-            });
-            warp::reply::json(&json)
-        })
+    active_streams(shared.clone())
         .or_else(|_err| {
             Err(warp::reject::custom(Error::NoSuchResource))
         })
         .boxed()
 }
 
-fn active_streams(shared: &Shared) -> Vec<String> {
-    let streams = shared.streams.read();
-    streams.iter()
-        .filter_map(|(k, v)| {
-            if v.has_publisher() {
-                Some(k.clone())
-            } else {
-                None
-            }
+fn active_streams(shared: Shared) -> BoxedFilter<(impl Reply,)> {
+    warp::path("active-streams")
+        .map(move || {
+            let streams = shared.streams.read();
+            let active = streams.iter()
+                .filter_map(|(k, v)| {
+                    if v.has_publisher() {
+                        Some(k.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<String>>();
+
+            let json = json!({
+                "streams": active
+            });
+
+            warp::reply::json(&json)
         })
-        .collect()
+        .boxed()
 }
