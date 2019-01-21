@@ -61,5 +61,5 @@ fn spawn_hls_server(mut shared: Shared) {
 
 #[cfg(feature = "web")]
 fn spawn_web_server(shared: Shared) {
-    web::WebServer::new(shared).start();
+    web::Server::new(shared).start();
 }

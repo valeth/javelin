@@ -1,0 +1,70 @@
+use std::{
+    error::Error as StdError,
+    net::SocketAddr,
+    thread,
+};
+use warp::{
+    Filter,
+    Reply,
+    Rejection,
+    http::StatusCode,
+};
+use serde_json::json;
+use super::api::{
+    api,
+    Error as ApiError,
+};
+use crate::Shared;
+
+
+pub struct Server {
+    shared: Shared,
+}
+
+impl Server {
+    pub fn new(shared: Shared) -> Self {
+        Self { shared }
+    }
+
+    pub fn start(&mut self) {
+        let shared = self.shared.clone();
+        thread::spawn(|| server(shared));
+    }
+}
+
+
+fn server(shared: Shared) {
+    let addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
+
+    let hls_root = {
+        let config = shared.config.read();
+        config.hls.root_dir.clone()
+    };
+
+    let hls_files = warp::path("hls")
+        .and(warp::fs::dir(hls_root));
+
+    let streams_api = warp::path("api")
+        .and(api(shared.clone()));
+
+    let routes = hls_files
+        .or(streams_api)
+        .recover(error_handler);
+
+    warp::serve(routes).run(addr);
+}
+
+fn error_handler(err: Rejection) -> Result<impl Reply, Rejection> {
+    match err.find_cause() {
+        Some(e @ ApiError::NoSuchResource) => {
+            let code = StatusCode::NOT_FOUND;
+            let json = json!({
+                "code": code.as_u16(),
+                "error": e.description()
+            });
+            let reply = warp::reply::json(&json);
+            Ok(warp::reply::with_status(reply, code))
+        },
+        None => Err(err)
+    }
+}
