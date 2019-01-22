@@ -2,6 +2,7 @@ use std::{
     net::SocketAddr,
     io::ErrorKind as IoErrorKind,
     sync::atomic::{AtomicUsize, Ordering},
+    time::Duration,
 };
 use log::{info, error};
 use futures::try_ready;
@@ -88,12 +89,18 @@ fn process<S>(id: u64, stream: S, shared: &Shared)
 
 #[cfg(not(feature = "tls"))]
 fn spawner(id: u64, stream: TcpStream, shared: Shared) {
+    stream.set_keepalive(Some(Duration::from_secs(30)))
+        .expect("Failed to set TCP keepalive");
+
     process(id, stream, &shared);
 }
 
 #[cfg(feature = "tls")]
 fn spawner(id: u64, stream: TcpStream, shared: Shared) {
     let config = shared.config.read().clone();
+
+    stream.set_keepalive(Some(Duration::from_secs(30)))
+        .expect("Failed to set TCP keepalive");
 
     if config.tls.enabled {
         let tls_acceptor = {
