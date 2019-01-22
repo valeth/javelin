@@ -88,8 +88,8 @@ impl WebConfig {
     pub fn new(args: &ArgMatches) -> Self {
         let enabled = !args.is_present("http_disabled");
 
-        let host = args.value_of("http_bind").unwrap_or("0.0.0.0");
-        let port = args.value_of("http_port").unwrap_or("8080");
+        let host = args.value_of("http_bind").expect("BUG: default value for 'http_bind' missing");
+        let port = args.value_of("http_port").expect("BUG: default value for 'http_port' missing");
         let addr = format!("{}:{}", host, port).parse().expect("Invalid address or port name for web server");
 
         Self { addr, enabled }
@@ -118,8 +118,8 @@ impl Config {
             .map(str::to_string)
             .collect();
 
-        let host = matches.value_of("bind").unwrap_or("0.0.0.0");
-        let port = matches.value_of("port").unwrap_or("1935");
+        let host = matches.value_of("bind").expect("BUG: default value for 'bind' missing");
+        let port = matches.value_of("port").expect("BUG: default value for 'port' missing");
         let addr = format!("{}:{}", host, port).parse().expect("Invalid address or port name");
 
         Self {
