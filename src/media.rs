@@ -49,8 +49,8 @@ impl Media {
 
 
 pub struct Channel {
-    publisher: Option<u64>,
-    stream_key: Option<String>,
+    pub publisher: Option<u64>,
+    pub stream_key: Option<String>,
     pub watchers: HashSet<u64>,
     pub metadata: Option<StreamMetadata>,
     pub video_seq_header: Option<Bytes>,

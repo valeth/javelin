@@ -22,9 +22,16 @@ use super::{
         Handler as EventHandler,
         EventResult,
     },
-    Sender,
-    Receiver,
 };
+
+
+pub enum Message {
+    Raw(Bytes),
+    Disconnect,
+}
+
+pub type Sender = mpsc::UnboundedSender<Message>;
+type Receiver = mpsc::UnboundedReceiver<Message>;
 
 
 /// Represents an incoming connection
@@ -98,7 +105,7 @@ impl<S> Peer<S>
 
         if !response_bytes.is_empty() {
             self.sender
-                .unbounded_send(Bytes::from(response_bytes))
+                .unbounded_send(Message::Raw(Bytes::from(response_bytes)))
                 .map_err(|_| Error::HandshakeFailed)?
         }
 
@@ -116,7 +123,7 @@ impl<S> Peer<S>
                     let peers = self.shared.peers.read();
                     let peer = peers.get(&target_peer_id).unwrap();
                     // debug!("Packet from {} to {} with {:?} bytes", self.id, target_peer_id, packet.bytes.len());
-                    peer.unbounded_send(Bytes::from(packet.bytes)).unwrap();
+                    peer.unbounded_send(Message::Raw(Bytes::from(packet.bytes))).unwrap();
                 },
                 EventResult::Disconnect => {
                     self.disconnecting = true;
@@ -148,8 +155,16 @@ impl<S> Future for Peer<S>
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         // FIXME: potential starvation of socket stream?
-        while let Async::Ready(Some(val)) = self.receiver.poll().unwrap() {
-            self.bytes_stream.fill_write_buffer(&val);
+        while let Async::Ready(Some(msg)) = self.receiver.poll().unwrap() {
+            match msg {
+                Message::Raw(val) => {
+                    self.bytes_stream.fill_write_buffer(&val);
+                },
+                Message::Disconnect => {
+                    self.disconnecting = true;
+                    break;
+                }
+            }
         }
 
         let _ = self.bytes_stream.poll_flush()?;

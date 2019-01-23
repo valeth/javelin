@@ -21,7 +21,10 @@ use crate::{
 };
 #[cfg(feature = "hls")]
 use crate::media;
-use super::Client;
+use super::{
+    Client,
+    peer,
+};
 
 
 #[derive(Debug)]
@@ -154,10 +157,14 @@ impl Handler {
         debug!("Stream key '{}' permitted", stream_key);
 
         {
-            let streams = self.shared.streams.read();
-            if let Some(stream) = streams.get(&app_name) {
-                if stream.has_publisher() {
-                    return Err(Error::SessionError(format!("App '{}' is already being published to", app_name)));
+            let mut streams = self.shared.streams.write();
+            if let Some(stream) = streams.get_mut(&app_name) {
+                if let Some(publisher) = &stream.publisher {
+                    info!("Another client is already publishing to this app, removing client");
+                    let peers = self.shared.peers.write();
+                    let peer = peers.get(publisher).unwrap();
+                    peer.unbounded_send(peer::Message::Disconnect).unwrap();
+                    stream.unpublish();
                 }
             }
         }

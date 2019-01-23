@@ -7,7 +7,7 @@ use crate::{
     media::Channel,
     rtmp::{
         Client,
-        Sender,
+        peer,
     },
     config::Config,
 };
@@ -18,7 +18,7 @@ use crate::hls;
 #[derive(Clone)]
 pub struct Shared {
     pub config: Arc<RwLock<Config>>,
-    pub peers: Arc<RwLock<HashMap<u64, Sender>>>,
+    pub peers: Arc<RwLock<HashMap<u64, peer::Sender>>>,
     pub clients: Arc<Mutex<HashMap<u64, Client>>>,
     pub streams: Arc<RwLock<HashMap<String, Channel>>>,
     pub app_names: Arc<RwLock<HashMap<String, String>>>,

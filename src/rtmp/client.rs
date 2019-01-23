@@ -69,19 +69,13 @@ impl Client {
 impl Drop for Client {
     fn drop(&mut self) {
         match self.state {
-            ClientState::Publishing(ref app_name, _) => {
-                let mut streams = self.shared.streams.write();
-                if let Some(stream) = streams.get_mut(app_name) {
-                    stream.unpublish();
-                }
-            },
             ClientState::Watching(ref app_name, _) => {
                 let mut streams = self.shared.streams.write();
                 if let Some(stream) = streams.get_mut(app_name) {
                     stream.watchers.remove(&self.peer_id);
                 }
             },
-            ClientState::Waiting => (),
+            _ => (),
         }
     }
 }
