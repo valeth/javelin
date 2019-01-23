@@ -35,7 +35,12 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
             .value_name("KEY")
             .display_order(2)
             .help("Permit a stream key for publishing")
-            .multiple(true));
+            .multiple(true))
+        .arg(Arg::with_name("republish_action")
+            .long("republish-action")
+            .possible_values(&["replace", "deny"])
+            .default_value("replace")
+            .help("The action to take when a republishing to the same application"));
 
     let mut args = Vec::new();
 

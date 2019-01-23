@@ -1,6 +1,8 @@
 use std::{
     collections::HashSet,
     net::SocketAddr,
+    str::FromStr,
+    result,
 };
 #[cfg(feature = "tls")]
 use std::{
@@ -12,9 +14,30 @@ use std::{
 use std::path::PathBuf;
 #[cfg(any(feature = "tls", feature = "hls"))]
 use clap::ArgMatches;
-use crate::args;
+use crate::{args, Error};
 #[cfg(feature = "tls")]
 use crate::error::Result;
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepublishAction {
+    Replace,
+    Deny,
+}
+
+impl FromStr for RepublishAction {
+    type Err = Error;
+
+    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
+        let action = match s {
+            "replace" => RepublishAction::Replace,
+            "deny" => RepublishAction::Deny,
+            _ => return Err(Error::from(format!("Failed to parse RepublishAction, '{}' not valid", s)))
+        };
+
+        Ok(action)
+    }
+}
 
 
 #[derive(Debug, Clone)]
@@ -101,6 +124,7 @@ impl WebConfig {
 pub struct Config {
     pub addr: SocketAddr,
     pub permitted_stream_keys: HashSet<String>,
+    pub republish_action: RepublishAction,
     #[cfg(feature = "tls")]
     pub tls: TlsConfig,
     #[cfg(feature = "hls")]
@@ -122,9 +146,16 @@ impl Config {
         let port = matches.value_of("port").expect("BUG: default value for 'port' missing");
         let addr = format!("{}:{}", host, port).parse().expect("Invalid address or port name");
 
+        let republish_action = matches
+            .value_of("republish_action")
+            .expect("BUG: default value for 'republish_action' missing")
+            .parse()
+            .unwrap(); // this should be safe to unwrap
+
         Self {
             addr,
             permitted_stream_keys,
+            republish_action,
             #[cfg(feature = "tls")]
             tls: TlsConfig::new(&matches),
             #[cfg(feature = "hls")]

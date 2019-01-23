@@ -20,7 +20,10 @@ use crate::{
     media::{Media, Channel},
 };
 #[cfg(feature = "hls")]
-use crate::media;
+use crate::{
+    media,
+    config::RepublishAction,
+};
 use super::{
     Client,
     peer,
@@ -158,13 +161,21 @@ impl Handler {
 
         {
             let mut streams = self.shared.streams.write();
+            let config = self.shared.config.read();
             if let Some(stream) = streams.get_mut(&app_name) {
                 if let Some(publisher) = &stream.publisher {
-                    info!("Another client is already publishing to this app, removing client");
-                    let peers = self.shared.peers.write();
-                    let peer = peers.get(publisher).unwrap();
-                    peer.unbounded_send(peer::Message::Disconnect).unwrap();
-                    stream.unpublish();
+                    match config.republish_action {
+                        RepublishAction::Replace => {
+                            info!("Another client is already publishing to this app, removing client");
+                            let peers = self.shared.peers.write();
+                            let peer = peers.get(publisher).unwrap();
+                            peer.unbounded_send(peer::Message::Disconnect).unwrap();
+                            stream.unpublish();
+                        },
+                        RepublishAction::Deny => {
+                            return Err(Error::SessionError(format!("App '{}' is already being published to", app_name)));
+                        }
+                    }
                 }
             }
         }
