@@ -22,7 +22,10 @@ simplelog = "^0.5"
 parking_lot = "^0.7"
 futures = "^0.1"
 rml_rtmp = "^0.2"
-clap = "~2.32"
+
+[dependencies.clap]
+version = "~2.32"
+features = ["wrap_help"]
 
 [dependencies.chrono]
 version = "^0.4"
