@@ -16,13 +16,13 @@ use rml_rtmp::{
 };
 use crate::{
     error::{Error, Result},
+    config::RepublishAction,
     shared::Shared,
     media::{Media, Channel},
 };
 #[cfg(feature = "hls")]
 use crate::{
     media,
-    config::RepublishAction,
 };
 use super::{
     Client,

@@ -71,10 +71,6 @@ impl Channel {
         }
     }
 
-    pub fn has_publisher(&self) -> bool {
-        self.publisher != None
-    }
-
     pub fn set_publisher(&mut self, publisher_id: u64, stream_key: String) {
         self.publisher = Some(publisher_id);
         self.stream_key = Some(stream_key);
