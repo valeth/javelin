@@ -136,6 +136,10 @@ impl Handler {
     fn connection_requested(&mut self, request_id: u32, app_name: &str) -> Result<()> {
         info!("Connection request from client {} for app '{}'", self.peer_id, app_name);
 
+        if app_name.is_empty() {
+            return Err(Error::from("Application name can not be empty"));
+        }
+
         let results = {
             let mut clients = self.shared.clients.lock();
             let client = clients.get_mut(&self.peer_id).unwrap();
