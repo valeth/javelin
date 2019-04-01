@@ -11,6 +11,8 @@ class String
   end
 end
 
+DockerError = Class.new(StandardError)
+
 class InvalidVersion < StandardError
   def initialize
     super("Requires version of format x.y.z")
@@ -25,12 +27,13 @@ def validate_version(version)
 end
 
 def docker(*args)
-  ChildProcess.build("docker", *args).tap do |p|
-    p.io.stdout = $stdout
-    p.io.stderr = $stderr
+  process = ChildProcess.build("docker", *args).tap do |p|
+    p.io.inherit!
     p.start
     p.wait
   end
+
+  raise DockerError unless process.exit_code.zero?
 end
 
 def docker_build(image_name, versions)
@@ -53,7 +56,7 @@ begin
   versions = ["latest", *validate_version(version)]
   docker_build(image_name, versions)
   docker_push(image_name, versions)
-rescue InvalidVersion => e
+rescue InvalidVersion, DockerError => e
   warn e.message
   exit 1
 end
