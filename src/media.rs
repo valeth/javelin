@@ -77,6 +77,11 @@ impl Channel {
         self.publish_start = Some(Utc::now());
     }
 
+    #[allow(dead_code)]
+    pub fn has_publisher(&self) -> bool {
+        self.publisher != None
+    }
+
     pub fn add_watcher(&mut self, watcher_id: u64) {
         self.watchers.insert(watcher_id);
     }
