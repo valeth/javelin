@@ -7,7 +7,7 @@ categories = ["multimedia", "multimedia::audio", "multimedia::video"]
 license = "GPL-3.0"
 readme = "README.md"
 repository = "https://gitlab.com/valeth/javelin.git"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2018"
 
 [workspace]
