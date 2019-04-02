@@ -37,6 +37,7 @@ impl Display for Error {
 pub(crate) fn api(shared: Shared) -> BoxedFilter<(impl Reply,)> {
     active_streams(shared.clone())
         .or(stream_stats(shared.clone()))
+        .or(server_info())
         .or_else(|err: Rejection| {
             if err.is_not_found() {
                 Err(warp::reject::custom(Error::NoSuchResource))
@@ -104,6 +105,20 @@ fn stream_stats(shared: Shared) -> BoxedFilter<(impl Reply,)> {
                     Err(warp::reject::custom(Error::StreamNotFound))
                 }
             }
+        })
+        .boxed()
+}
+
+fn server_info() -> BoxedFilter<(impl Reply,)> {
+    warp::path("server-info")
+        .map(|| {
+            let json = json!({
+                "version": env!("CARGO_PKG_VERSION"),
+                "authors": env!("CARGO_PKG_AUTHORS").split_terminator(':').collect::<Vec<_>>(),
+                "backend": env!("CARGO_PKG_NAME"),
+            });
+
+            Ok(warp::reply::json(&json))
         })
         .boxed()
 }
