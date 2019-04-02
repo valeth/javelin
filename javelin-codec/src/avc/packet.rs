@@ -89,7 +89,7 @@ impl Packet {
         assert!(codec_id == 7);
 
         let tmp = buf.get_u32_be();
-        let packet_type = PacketType::from((tmp >> 22) as u8);
+        let packet_type = PacketType::from((tmp >> 24) as u8);
         let composition_time = tmp & 0x00_FF_FF_FF;
 
         if packet_type == PacketType::SequenceHeader {
@@ -123,7 +123,7 @@ impl Packet {
     }
 
     pub fn presentation_timestamp(&self) -> u64 {
-        self.timestamp
+        self.timestamp + (self.composition_time as u64)
     }
 
     pub fn timestamp(&self) -> u64 {

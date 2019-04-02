@@ -5,7 +5,7 @@ description = "Codecs for the Javelin streaming server"
 keywords = ["video", "audio", "codec"]
 license = "GPL-3.0"
 repository = "https://gitlab.com/valeth/javelin.git"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2018"
 
 [dependencies]
