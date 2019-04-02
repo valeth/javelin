@@ -67,13 +67,14 @@ impl Buffer {
 
         let mut buf = video.try_as_bytes()?.into_buf();
         let pes_data: Bytes = buf.by_ref().take(153).collect();
+        let pcr = ClockReference::new(video.timestamp() * 90)?;
 
         let adaptation_field = if video.is_keyframe() {
             Some(AdaptationField {
                 discontinuity_indicator: false,
                 random_access_indicator: true,
                 es_priority_indicator: false,
-                pcr: Some(ClockReference::new(video.timestamp() * 90)?),
+                pcr: Some(pcr),
                 opcr: None,
                 splice_countdown: None,
                 transport_private_data: Vec::new(),
@@ -82,6 +83,9 @@ impl Buffer {
         } else {
             None
         };
+
+        let pts = Timestamp::new(video.presentation_timestamp() * 90)?;
+        let dts = Timestamp::new(video.timestamp() * 90)?;
 
         let packet = TsPacket {
             header: header.clone(),
@@ -93,8 +97,8 @@ impl Buffer {
                     data_alignment_indicator: false,
                     copyright: false,
                     original_or_copy: false,
-                    pts: Some(Timestamp::new(video.presentation_timestamp() * 90)?),
-                    dts: None,
+                    pts: Some(pts),
+                    dts: Some(dts),
                     escr: None,
                 },
                 pes_packet_len: 0,

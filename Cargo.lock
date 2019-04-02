@@ -475,7 +475,7 @@ dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "javelin-codec 0.3.3",
+ "javelin-codec 0.3.4",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "m3u8-rs 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "mpeg2ts 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -493,7 +493,7 @@ dependencies = [
 
 [[package]]
 name = "javelin-codec"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
