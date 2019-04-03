@@ -103,15 +103,15 @@ deploy-crates-io:
   only:
     - tags@valeth/javelin
 
-deploy-docker-image:
-  allow_failure: true
-  image: docker:latest
-  stage: publish
-  before_script:
-    - apk add --no-cache ruby
-    - gem install --no-document childprocess toml
-    - docker login -u "$GITLAB_USERNAME" -p "$GITLAB_ACCESS_TOKEN" registry.gitlab.com
-  script:
-    - ./docker.rb
-  only:
-    - tags@valeth/javelin
+# deploy-docker-image:
+#   allow_failure: true
+#   image: docker:latest
+#   stage: publish
+#   before_script:
+#     - apk add --no-cache ruby
+#     - gem install --no-document childprocess toml
+#     - docker login -u "$GITLAB_USERNAME" -p "$GITLAB_ACCESS_TOKEN" registry.gitlab.com
+#   script:
+#     - ./docker.rb
+#   only:
+#     - tags@valeth/javelin
