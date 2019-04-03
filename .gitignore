@@ -13,3 +13,4 @@
 /cert*
 /.env*
 /tmp
+/config/**/*.yml

@@ -40,7 +40,12 @@ pub fn build_args<'a>() -> ArgMatches<'a> {
             .long("republish-action")
             .possible_values(&["replace", "deny"])
             .default_value("replace")
-            .help("The action to take when a republishing to the same application"));
+            .help("The action to take when a republishing to the same application"))
+        .arg(Arg::with_name("config_dir")
+            .short("c")
+            .long("config-dir")
+            .value_name("PATH")
+            .help("The directory where all config files are located"));
 
     let mut args = Vec::new();
 

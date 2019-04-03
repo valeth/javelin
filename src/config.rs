@@ -3,6 +3,7 @@ use std::{
     net::SocketAddr,
     str::FromStr,
     result,
+    path::PathBuf,
 };
 #[cfg(feature = "tls")]
 use std::{
@@ -10,9 +11,7 @@ use std::{
     io::Read,
     env,
 };
-#[cfg(any(feature = "tls", feature = "hls"))]
-use std::path::PathBuf;
-#[cfg(any(feature = "tls", feature = "hls"))]
+use log::debug;
 use clap::ArgMatches;
 use crate::{args, Error};
 #[cfg(feature = "tls")]
@@ -137,10 +136,7 @@ impl Config {
     pub fn new() -> Self {
         let matches = args::build_args();
 
-        let permitted_stream_keys: HashSet<String> = matches
-            .values_of("permitted_stream_keys").unwrap_or_default()
-            .map(str::to_string)
-            .collect();
+        let permitted_stream_keys = load_permitted_stream_keys(&matches);
 
         let host = matches.value_of("bind").expect("BUG: default value for 'bind' missing");
         let port = matches.value_of("port").expect("BUG: default value for 'port' missing");
@@ -164,4 +160,33 @@ impl Config {
             web: WebConfig::new(&matches),
         }
     }
+}
+
+/// Loads all stream keys from the configuration file and then from command line arguments.
+/// Every key is only included once, even if they are specified multiple times.
+fn load_permitted_stream_keys(args: &ArgMatches) -> HashSet<String> {
+    let config_dir = args.value_of("config_dir")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("./config"));
+    let keys_file = config_dir.join("permitted_stream_keys.yml");
+    let mut permitted_stream_keys: HashSet<String> = HashSet::new();
+
+    if keys_file.exists() {
+        debug!("Loading permitted keys from configuration file");
+        if let Ok(file) = std::fs::File::open(&keys_file) {
+            let keys: HashSet<String> = serde_yaml::from_reader(file)
+                .expect("Failed to read keys from config file");
+            permitted_stream_keys.extend(keys);
+        }
+    }
+
+    let keys: HashSet<String> = args
+        .values_of("permitted_stream_keys")
+        .unwrap_or_default()
+        .map(str::to_string)
+        .collect();
+
+    permitted_stream_keys.extend(keys);
+
+    permitted_stream_keys
 }
