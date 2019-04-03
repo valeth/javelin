@@ -14,3 +14,4 @@ services:
       - "8080:8080"
     volumes:
       - "hls_data:/var/data"
+      - "./config:/app/config"

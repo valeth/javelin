@@ -28,7 +28,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     ca-certificates
 
-RUN mkdir -p /var/data
+RUN mkdir -p /var/data /app/config
 WORKDIR /app
 
 COPY --from=build /build/out/javelin ./javelin
