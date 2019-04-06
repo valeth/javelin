@@ -1,6 +1,5 @@
 use bytes::{Bytes, BytesMut, BufMut};
 use super::{
-    packet::Metadata,
     config::AudioSpecificConfiguration,
 };
 
@@ -41,7 +40,6 @@ pub struct AudioDataTransportStream {
     profile: u8,
     sampling_frequency_index: u8,
     channel_configuration: u8,
-    metadata: Metadata,
     crc: Option<String>,
     payload: Bytes,
 }
@@ -50,7 +48,7 @@ impl AudioDataTransportStream {
     const SYNCWORD: u16 = 0xFFF0;
     const PROTECTION_FLAG: u8 = 0x01;
 
-    pub fn new(payload: Bytes, metadata: Metadata, asc: AudioSpecificConfiguration) -> Self {
+    pub fn new(payload: Bytes, asc: AudioSpecificConfiguration) -> Self {
         assert!(payload.len() <= (std::u16::MAX & 0x1FFF) as usize);
 
         let profile = (asc.object_type as u8) - 1;
@@ -60,7 +58,6 @@ impl AudioDataTransportStream {
             profile,
             sampling_frequency_index: asc.sampling_frequency_index,
             channel_configuration: asc.channel_configuration,
-            metadata,
             crc: None,
             payload,
         }
@@ -116,7 +113,6 @@ mod tests {
     use super::*;
     use crate::aac::{
         config::AudioObjectType,
-        packet::AudioChannel,
     };
 
     #[test]
@@ -136,14 +132,8 @@ mod tests {
             extension_flag: true,
         };
 
-        let metadata = Metadata {
-            rate: 44000,
-            sample_size: 16,
-            channels: AudioChannel::Stereo,
-        };
-
         let dummy_payload = Bytes::from_static(&[0b0100_1110, 0b0010_1111, 0b1001_0011, 0b1111_0010]);
-        let adts = AudioDataTransportStream::new(dummy_payload, metadata, asc);
+        let adts = AudioDataTransportStream::new(dummy_payload, asc);
         let actual: Bytes = adts.into();
 
         assert_eq!(expected[..], actual[..]);
