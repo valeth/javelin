@@ -1,5 +1,6 @@
 use std::{io, result};
 use rml_rtmp::sessions::ServerSessionError as RtmpSessionError;
+use tokio::timer::timeout::Error as TokioTimeoutError;
 #[cfg(feature = "hls")]
 use mpeg2ts::Error as TransportStreamError;
 #[cfg(feature = "hls")]
@@ -15,6 +16,7 @@ pub enum Error {
     Custom(String),
     HandshakeFailed,
     RequestError,
+    Timeout(String),
     SessionError(String),
     #[cfg(feature = "hls")]
     TransportStreamError(TransportStreamError),
@@ -57,5 +59,11 @@ impl<'a> From<&'a str> for Error {
 impl From<String> for Error {
     fn from(err: String) -> Self {
         Error::Custom(err)
+    }
+}
+
+impl<T> From<TokioTimeoutError<T>> for Error {
+    fn from(_err: TokioTimeoutError<T>) -> Self {
+        Error::Timeout("Timed out".to_string())
     }
 }

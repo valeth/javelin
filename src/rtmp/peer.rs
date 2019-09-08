@@ -1,9 +1,13 @@
+use std::time::Duration;
 use log::{error, debug, info};
 use futures::{
     sync::mpsc,
     try_ready,
 };
-use tokio::prelude::*;
+use tokio::{
+    prelude::*,
+    timer::Timeout,
+};
 use bytes::{Bytes, BytesMut, BufMut};
 use rml_rtmp::{
     handshake::{
@@ -39,7 +43,7 @@ pub struct Peer<S>
     where S: AsyncRead + AsyncWrite
 {
     id: u64,
-    bytes_stream: BytesStream<S>,
+    bytes_stream: Timeout<BytesStream<S>>,
     sender: Sender,
     receiver: Receiver,
     shared: Shared,
@@ -64,6 +68,8 @@ impl<S> Peer<S>
             let mut peers = shared.peers.write();
             peers.insert(id, sender.clone());
         }
+
+        let bytes_stream = Timeout::new(bytes_stream, Duration::from_secs(5));
 
         Self {
             id,
@@ -158,7 +164,7 @@ impl<S> Future for Peer<S>
         while let Async::Ready(Some(msg)) = self.receiver.poll().unwrap() {
             match msg {
                 Message::Raw(val) => {
-                    self.bytes_stream.fill_write_buffer(&val);
+                    self.bytes_stream.get_mut().fill_write_buffer(&val);
                 },
                 Message::Disconnect => {
                     self.disconnecting = true;
@@ -167,7 +173,7 @@ impl<S> Future for Peer<S>
             }
         }
 
-        let _ = self.bytes_stream.poll_flush()?;
+        let _ = self.bytes_stream.get_mut().poll_flush()?;
 
         match try_ready!(self.bytes_stream.poll()) {
             Some(data) => {
