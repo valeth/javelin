@@ -50,7 +50,6 @@ impl<S> BytesStream<S>
             if bytes_read == 0 {
                 return Ok(Async::Ready(()));
             }
-
         }
     }
 }

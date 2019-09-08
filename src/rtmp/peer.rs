@@ -103,8 +103,13 @@ impl<S> Peer<S>
                 info!("Handshake for client {} successful", self.id);
                 debug!("Remaining bytes after handshake: {}", remaining_bytes.len());
                 self.handshake_completed = true;
-                self.buffer.reserve(remaining_bytes.len());
-                self.buffer.put(remaining_bytes);
+
+                if !remaining_bytes.is_empty() {
+                    self.buffer.reserve(remaining_bytes.len());
+                    self.buffer.put(remaining_bytes);
+                    self.handle_incoming_bytes()?;
+                }
+
                 response_bytes
             }
         };
