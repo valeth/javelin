@@ -43,6 +43,8 @@ pub struct Handler {
     shared: Shared,
     #[cfg(feature = "hls")]
     media_sender: Option<media::Sender>,
+    app_name: Option<String>,
+    stream_key: Option<String>,
 }
 
 impl Handler {
@@ -61,6 +63,8 @@ impl Handler {
             shared,
             #[cfg(feature = "hls")]
             media_sender: None,
+            app_name: None,
+            stream_key: None,
         };
 
         this.handle_server_session_results(results)?;
@@ -136,6 +140,8 @@ impl Handler {
     fn connection_requested(&mut self, request_id: u32, app_name: &str) -> Result<()> {
         info!("Connection request from client {} for app '{}'", self.peer_id, app_name);
 
+        self.app_name = Some(app_name.to_string());
+
         if app_name.is_empty() {
             return Err(Error::from("Application name can not be empty"));
         }
@@ -153,6 +159,8 @@ impl Handler {
 
     fn publish_requested(&mut self, request_id: u32, app_name: String, stream_key: String) -> Result<()> {
         info!("Client {} requested publishing to app '{}' using stream key {}", self.peer_id, app_name, stream_key);
+
+        self.stream_key = Some(stream_key.to_string());
 
         {
             let config = self.shared.config.read();
@@ -212,19 +220,8 @@ impl Handler {
         Ok(())
     }
 
-    fn publish_stream_finished(&mut self, app_name: &str, stream_key: &str) -> Result<()> {
+    fn publish_stream_finished(&mut self, app_name: &str, _stream_key: &str) -> Result<()> {
         info!("Publishing of app '{}' finished", app_name);
-
-        {
-            let mut streams = self.shared.streams.write();
-            let stream = streams.get_mut(app_name).unwrap();
-            stream.unpublish();
-        }
-
-        {
-            let mut app_names = self.shared.app_names.write();
-            app_names.remove(stream_key);
-        }
 
         self.results.push_back(EventResult::Disconnect);
 
@@ -383,6 +380,19 @@ impl Drop for Handler {
     fn drop(&mut self) {
         let mut clients = self.shared.clients.lock();
         clients.remove(&self.peer_id);
+
+        debug!("Setting stream to unpublished");
+        if let Some(app_name) = &self.app_name {
+            let mut streams = self.shared.streams.write();
+            let stream = streams.get_mut(app_name).unwrap();
+            stream.unpublish();
+        }
+
+        debug!("Removing app from registry");
+        if let Some(stream_key) = &self.stream_key {
+            let mut app_names = self.shared.app_names.write();
+            app_names.remove(stream_key);
+        }
     }
 }
 
