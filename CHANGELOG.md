@@ -12,17 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.3.7]
-
-### Added
-- Connections time out after 5 seconds of no data received.
-
-### Fixed
-- Streams should no longer get stuck when disconnection abnormally.
-- RTMP handshakes should be resolved properly.
-
----
-
 ## [0.3.6]
 
 ### Added
@@ -133,7 +122,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- links -->
 
 [Unreleased]: https://gitlab.com/valeth/javelin/tree/develop
-[0.3.7]: https://gitlab.com/valeth/javelin/tree/0.3.7
 [0.3.6]: https://gitlab.com/valeth/javelin/tree/0.3.6
 [0.3.5]: https://gitlab.com/valeth/javelin/tree/0.3.5
 [0.3.4]: https://gitlab.com/valeth/javelin/tree/0.3.4
