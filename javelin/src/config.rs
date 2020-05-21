@@ -1,21 +1,25 @@
-use std::{
-    collections::HashSet,
-    net::SocketAddr,
-    str::FromStr,
-    result,
-    path::PathBuf,
+use {
+    std::{
+        collections::HashSet,
+        net::SocketAddr,
+        str::FromStr,
+        result,
+        path::PathBuf,
+    },
+    log::debug,
+    clap::ArgMatches,
+    crate::{args, Error},
 };
+
 #[cfg(feature = "tls")]
-use std::{
-    fs::File,
-    io::Read,
-    env,
+use {
+    std::{
+        fs::File,
+        io::Read,
+        env,
+    },
+    crate::error::Result,
 };
-use log::debug;
-use clap::ArgMatches;
-use crate::{args, Error};
-#[cfg(feature = "tls")]
-use crate::error::Result;
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

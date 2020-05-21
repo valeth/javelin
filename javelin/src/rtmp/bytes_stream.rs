@@ -1,10 +1,9 @@
-use tokio::{
-    prelude::*,
-    io,
+use {
+    tokio::{prelude::*, io},
+    futures::try_ready,
+    bytes::{Bytes, BytesMut, BufMut},
+    crate::error::Error,
 };
-use futures::try_ready;
-use bytes::{Bytes, BytesMut, BufMut};
-use crate::error::Error;
 
 
 pub struct BytesStream<S>

@@ -1,12 +1,15 @@
-use std::collections::HashSet;
-use bytes::Bytes;
-use rml_rtmp::{
-    sessions::StreamMetadata,
-    time::RtmpTimestamp,
+use {
+    std::collections::HashSet,
+    bytes::Bytes,
+    rml_rtmp::{
+        sessions::StreamMetadata,
+        time::RtmpTimestamp,
+    },
+    chrono::prelude::{DateTime, Utc},
 };
+
 #[cfg(feature = "hls")]
 use futures::sync::mpsc;
-use chrono::prelude::{DateTime, Utc};
 
 
 #[cfg(feature = "hls")]

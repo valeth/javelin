@@ -1,19 +1,21 @@
-use std::{
-    error::Error as StdError,
-    thread,
+use {
+    std::{
+        error::Error as StdError,
+        thread,
+    },
+    warp::{
+        Filter,
+        Reply,
+        Rejection,
+        http::StatusCode,
+    },
+    serde_json::json,
+    super::api::{
+        api,
+        Error as ApiError,
+    },
+    crate::Shared,
 };
-use warp::{
-    Filter,
-    Reply,
-    Rejection,
-    http::StatusCode,
-};
-use serde_json::json;
-use super::api::{
-    api,
-    Error as ApiError,
-};
-use crate::Shared;
 
 
 macro_rules! json_error_response {

@@ -1,15 +1,17 @@
-use std::{
-    collections::HashMap,
-    sync::Arc,
-};
-use parking_lot::{RwLock, Mutex};
-use crate::{
-    media::Channel,
-    rtmp::{
-        Client,
-        peer,
+use {
+    std::{
+        collections::HashMap,
+        sync::Arc,
     },
-    config::Config,
+    parking_lot::{RwLock, Mutex},
+    crate::{
+        media::Channel,
+        rtmp::{
+            Client,
+            peer,
+        },
+        config::Config,
+    },
 };
 #[cfg(feature = "hls")]
 use crate::hls;

@@ -10,5 +10,7 @@ use self::{
     bytes_stream::BytesStream,
 };
 
-pub use self::client::Client;
-pub use self::server::Server;
+pub use self::{
+    client::Client,
+    server::Server,
+};

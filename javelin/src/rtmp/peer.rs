@@ -1,26 +1,28 @@
-use log::{error, debug, info};
-use futures::{
-    sync::mpsc,
-    try_ready,
-};
-use tokio::prelude::*;
-use bytes::{Bytes, BytesMut, BufMut};
-use rml_rtmp::{
-    handshake::{
-        Handshake as RtmpHandshake,
-        HandshakeProcessResult,
-        PeerType,
+use {
+    log::{error, debug, info},
+    futures::{
+        sync::mpsc,
+        try_ready,
     },
-};
-use crate::{
-    error::{Error, Result},
-    shared::Shared,
-};
-use super::{
-    BytesStream,
-    event::{
-        Handler as EventHandler,
-        EventResult,
+    tokio::prelude::*,
+    bytes::{Bytes, BytesMut, BufMut},
+    rml_rtmp::{
+        handshake::{
+            Handshake as RtmpHandshake,
+            HandshakeProcessResult,
+            PeerType,
+        },
+    },
+    crate::{
+        error::{Error, Result},
+        shared::Shared,
+    },
+    super::{
+        BytesStream,
+        event::{
+            Handler as EventHandler,
+            EventResult,
+        },
     },
 };
 

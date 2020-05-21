@@ -1,18 +1,21 @@
-use std::{
-    fs,
-    path::PathBuf,
-    time::Duration,
+use {
+    std::{
+        fs,
+        path::PathBuf,
+        time::Duration,
+    },
+    log::error,
+    m3u8_rs::playlist::{MediaPlaylist, MediaSegment},
+    tempfile::NamedTempFile,
+    super::file_cleaner,
+    crate::{
+        error::Result,
+        shared::Shared
+    },
 };
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use log::error;
-use m3u8_rs::playlist::{MediaPlaylist, MediaSegment};
-use tempfile::NamedTempFile;
-use super::file_cleaner;
-use crate::{
-    error::Result,
-    shared::Shared
-};
 
 
 pub struct Playlist {

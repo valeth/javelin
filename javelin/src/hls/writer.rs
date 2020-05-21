@@ -1,20 +1,23 @@
-use std::{path::PathBuf, fs};
-use log::{debug, error, warn};
-use futures::try_ready;
-use tokio::prelude::*;
-use bytes::Bytes;
-use chrono::Utc;
+use {
+    std::{path::PathBuf, fs},
+    log::{debug, error, warn},
+    futures::try_ready,
+    tokio::prelude::*,
+    bytes::Bytes,
+    chrono::Utc,
+    super::{
+        transport_stream::Buffer as TsBuffer,
+        m3u8::Playlist,
+    },
+    crate::{
+        shared::Shared,
+        media::{self, Media},
+        error::{Error, Result},
+    },
+};
+
 #[cfg(feature = "hls")]
 use javelin_codec::{avc, aac};
-use super::{
-    transport_stream::Buffer as TsBuffer,
-    m3u8::Playlist,
-};
-use crate::{
-    shared::Shared,
-    media::{self, Media},
-    error::{Error, Result},
-};
 
 
 pub struct Writer {

@@ -1,16 +1,18 @@
-use std::{fs, path::Path};
-use log::{debug, error, info};
-use tokio::prelude::*;
-use futures::{
-    try_ready,
-    sync::{mpsc, oneshot},
+use {
+    std::{fs, path::Path},
+    log::{debug, error, info},
+    tokio::prelude::*,
+    futures::{
+        try_ready,
+        sync::{mpsc, oneshot},
+    },
+    super::writer::Writer,
+    crate::{
+        media,
+        shared::Shared,
+        Result,
+    },
 };
-use crate::{
-    media,
-    shared::Shared,
-    Result,
-};
-use super::writer::Writer;
 
 
 type Message = (String, oneshot::Sender<media::Sender>);

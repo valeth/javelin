@@ -1,9 +1,14 @@
-use std::{io, result};
-use rml_rtmp::sessions::ServerSessionError as RtmpSessionError;
+use {
+    std::{io, result},
+    rml_rtmp::sessions::ServerSessionError as RtmpSessionError,
+};
+
 #[cfg(feature = "hls")]
-use mpeg2ts::Error as TransportStreamError;
-#[cfg(feature = "hls")]
-use javelin_codec::Error as CodecError;
+use {
+    mpeg2ts::Error as TransportStreamError,
+    javelin_codec::Error as CodecError,
+};
+
 
 pub type Result<T> = result::Result<T, Error>;
 

@@ -1,25 +1,28 @@
-use std::{
-    net::SocketAddr,
-    io::ErrorKind as IoErrorKind,
-    sync::atomic::{AtomicUsize, Ordering},
-    time::Duration,
-};
-use log::{info, error};
-use futures::try_ready;
-use tokio::{
-    prelude::*,
-    net::{TcpListener, TcpStream, tcp::Incoming},
-};
-#[cfg(feature = "tls")]
-use native_tls;
-#[cfg(feature = "tls")]
-use tokio_tls::TlsAcceptor;
-use crate::{
-    error::Error,
-    shared::Shared,
+use {
+    std::{
+        net::SocketAddr,
+        io::ErrorKind as IoErrorKind,
+        sync::atomic::{AtomicUsize, Ordering},
+        time::Duration,
+    },
+    log::{info, error},
+    futures::try_ready,
+    tokio::{
+        prelude::*,
+        net::{TcpListener, TcpStream, tcp::Incoming},
+    },
+    super::{Peer, BytesStream},
+    crate::{
+        error::Error,
+        shared::Shared,
+    },
 };
 
-use super::{Peer, BytesStream};
+#[cfg(feature = "tls")]
+use {
+    native_tls,
+    tokio_tls::TlsAcceptor,
+};
 
 
 type ClientId = u64;

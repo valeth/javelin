@@ -1,12 +1,14 @@
-use rml_rtmp::sessions::{
-    ServerSession,
-    ServerSessionConfig,
-    ServerSessionResult
-};
-use crate::{
-    error::{Error, Result},
-    media::Channel,
-    shared::Shared,
+use {
+    rml_rtmp::sessions::{
+        ServerSession,
+        ServerSessionConfig,
+        ServerSessionResult
+    },
+    crate::{
+        error::{Error, Result},
+        media::Channel,
+        shared::Shared,
+    },
 };
 
 

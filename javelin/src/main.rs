@@ -1,4 +1,6 @@
 #![warn(clippy::all)]
+#![warn(rust_2018_idioms)]
+#![allow(elided_lifetimes_in_paths)]
 
 mod error;
 mod shared;
@@ -14,13 +16,13 @@ mod hls;
 mod web;
 
 
-use futures::future::lazy;
-use simplelog::{Config, SimpleLogger, TermLogger, LevelFilter};
-
-#[allow(unused_imports)]
-use self::{
-    shared::Shared,
-    error::{Error, Result},
+use {
+    futures::future::lazy,
+    simplelog::{Config, SimpleLogger, TermLogger, LevelFilter},
+    self::{
+        shared::Shared,
+        error::{Error, Result},
+    },
 };
 
 

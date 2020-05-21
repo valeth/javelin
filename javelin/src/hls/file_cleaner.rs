@@ -1,15 +1,18 @@
-use std::{
-    path::PathBuf,
-    fs,
-    time::{Instant, Duration},
+use {
+    std::{
+        path::PathBuf,
+        fs,
+        time::{Instant, Duration},
+    },
+    log::{debug, error},
+    futures::sync::mpsc::{self, UnboundedSender, UnboundedReceiver},
+    tokio::{
+        prelude::*,
+        timer::DelayQueue,
+    },
+    crate::shared::Shared,
 };
-use log::{debug, error};
-use futures::sync::mpsc::{self, UnboundedSender, UnboundedReceiver};
-use tokio::{
-    prelude::*,
-    timer::DelayQueue,
-};
-use crate::shared::Shared;
+
 
 type Batch = Vec<PathBuf>;
 type Message = (Duration, Batch);

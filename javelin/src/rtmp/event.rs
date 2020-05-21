@@ -1,32 +1,34 @@
-use std::{
-    collections::VecDeque,
-    rc::Rc,
-};
-use::log::{debug, error, info};
-#[cfg(feature = "hls")]
-use futures::{sync::oneshot, Future};
-use rml_rtmp::{
-    sessions::{
-        ServerSessionResult,
-        ServerSessionEvent as Event,
-        StreamMetadata,
+use {
+    std::{
+        collections::VecDeque,
+        rc::Rc,
     },
-    chunk_io::Packet,
-    time::RtmpTimestamp
+    log::{debug, error, info},
+    rml_rtmp::{
+        sessions::{
+            ServerSessionResult,
+            ServerSessionEvent as Event,
+            StreamMetadata,
+        },
+        chunk_io::Packet,
+        time::RtmpTimestamp
+    },
+    crate::{
+        error::{Error, Result},
+        config::RepublishAction,
+        shared::Shared,
+        media::{Media, Channel},
+    },
+    super::{
+        Client,
+        peer,
+    },
 };
-use crate::{
-    error::{Error, Result},
-    config::RepublishAction,
-    shared::Shared,
-    media::{Media, Channel},
-};
+
 #[cfg(feature = "hls")]
-use crate::{
-    media,
-};
-use super::{
-    Client,
-    peer,
+use {
+    futures::{sync::oneshot, Future},
+    crate::media,
 };
 
 

@@ -1,15 +1,17 @@
-use std::{
-    error::Error as StdError,
-    fmt::{self, Display},
+use {
+    std::{
+        error::Error as StdError,
+        fmt::{self, Display},
+    },
+    warp::{
+        Filter,
+        Reply,
+        Rejection,
+        filters::BoxedFilter,
+    },
+    serde_json::json,
+    crate::Shared,
 };
-use warp::{
-    Filter,
-    Reply,
-    Rejection,
-    filters::BoxedFilter,
-};
-use serde_json::json;
-use crate::Shared;
 
 
 #[derive(Clone, Debug)]
