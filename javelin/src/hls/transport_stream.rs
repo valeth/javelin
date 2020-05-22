@@ -2,6 +2,7 @@ use {
     std::{
         fs::File,
         path::Path,
+        io::Cursor,
     },
     bytes::{Bytes, Buf},
     mpeg2ts::{
@@ -70,7 +71,7 @@ impl Buffer {
         let mut header = default_ts_header(VIDEO_ES_PID)?;
         header.continuity_counter = self.video_continuity_counter;
 
-        let mut buf = video.try_as_bytes()?.into_buf();
+        let mut buf = Cursor::new(video.try_as_bytes()?);
         let pes_data: Bytes = buf.by_ref().take(153).collect();
         let pcr = ClockReference::new(video.timestamp() * 90)?;
 
@@ -139,7 +140,7 @@ impl Buffer {
             time::Timestamp,
         };
 
-        let mut buf = audio.to_bytes().into_buf();
+        let mut buf = Cursor::new(audio.to_bytes());
         let pes_data: Bytes = buf.by_ref().take(153).collect();
 
         let mut header = default_ts_header(AUDIO_ES_PID)?;
