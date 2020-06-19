@@ -9,9 +9,8 @@ use {
             PeerType,
         },
     },
-    crate::shared::Shared,
+    crate::{BytesStream, shared::Shared},
     super::{
-        BytesStream,
         event::{
             Handler as EventHandler,
             EventResult,

@@ -10,8 +10,8 @@ use {
         prelude::*,
         net::{TcpListener, TcpStream, tcp::Incoming},
     },
-    super::{Peer, BytesStream, Error},
-    crate::shared::Shared,
+    super::{Peer, Error},
+    crate::{BytesStream, shared::Shared},
 };
 
 #[cfg(feature = "tls")]
