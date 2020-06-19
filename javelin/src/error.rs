@@ -10,7 +10,7 @@ use {
 };
 
 
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T, E=Error> = result::Result<T, E>;
 
 
 #[derive(Debug)]

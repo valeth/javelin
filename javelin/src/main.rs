@@ -18,7 +18,6 @@ mod web;
 
 use {
     futures::future::lazy,
-    simplelog::{Config, SimpleLogger, TermLogger, LevelFilter},
     self::{
         shared::Shared,
         error::{Error, Result},
@@ -26,15 +25,10 @@ use {
 };
 
 
-macro_rules! init_logger {
-    [ $kind:ident ] => { $kind::init(LevelFilter::Debug, Config::default()) }
-}
-
-
 fn main() {
-    init_logger!(TermLogger).unwrap_or_else(|_|
-        init_logger!(SimpleLogger).unwrap_or_else(|err|
-            eprintln!("Failed to initialize logger: {}", err)));
+    if let Err(why) = init_logger() {
+        eprintln!("Failed to initialize logger: {}", why);
+    };
 
     let shared = Shared::new();
 
@@ -49,6 +43,49 @@ fn main() {
 
         Ok(())
     }));
+}
+
+fn init_logger() -> Result<(), Box<dyn std::error::Error>> {
+    use {
+        fern::{Dispatch, colors::ColoredLevelConfig, log_file},
+        log::LevelFilter,
+        chrono::{Utc, Local as LocalTime},
+    };
+
+    let colors = ColoredLevelConfig::default();
+    Dispatch::new()
+        .level(LevelFilter::Error)
+        .level_for("javelin", LevelFilter::Warn)
+        .level_for("javelin::rtmp", LevelFilter::Debug)
+        .level_for("javelin-codec", LevelFilter::Warn)
+        .chain(Dispatch::new()
+            .format(|out, msg, record| {
+                out.finish(format_args!(
+                    "level={:5} timestamp={} target={}  {}",
+                    record.level(),
+                    Utc::now().format("%Y-%m-%dT%H:%M:%S"),
+                    record.target(),
+                    msg
+                ))
+            })
+            // TODO: implement auto rotating file logger
+            .chain(log_file("javelin.log")?)
+        )
+        .chain(Dispatch::new()
+            .format(move |out, msg, record| {
+                out.finish(format_args!(
+                    "[{:5}] {} ({}) {}",
+                    colors.color(record.level()),
+                    LocalTime::now().format("%Y-%m-%d %H:%M:%S"),
+                    record.target(),
+                    msg
+                ))
+            })
+            .chain(std::io::stdout())
+        )
+        .apply()?;
+
+    Ok(())
 }
 
 #[cfg(feature = "hls")]
