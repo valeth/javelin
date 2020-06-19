@@ -1,7 +1,6 @@
 #![deny(unused_must_use)]
 #![warn(rust_2018_idioms)]
 
-#[macro_use] mod macros;
 pub mod error;
 pub mod flv;
 pub mod avc;
