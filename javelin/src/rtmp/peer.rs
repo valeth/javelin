@@ -1,9 +1,5 @@
 use {
-    log::{error, debug, info},
-    futures::{
-        sync::mpsc,
-        try_ready,
-    },
+    futures::{sync::mpsc, try_ready},
     tokio::prelude::*,
     bytes::{Bytes, BytesMut, BufMut},
     rml_rtmp::{
@@ -13,16 +9,14 @@ use {
             PeerType,
         },
     },
-    crate::{
-        error::{Error, Result},
-        shared::Shared,
-    },
+    crate::shared::Shared,
     super::{
         BytesStream,
         event::{
             Handler as EventHandler,
             EventResult,
         },
+        error::Error,
     },
 };
 
@@ -88,16 +82,16 @@ impl<S> Peer<S>
 
         let response_bytes = match self.handshake.process_bytes(&data) {
             Err(why) => {
-                error!("Handshake for peer {} failed: {}", self.id, why);
+                log::error!("Handshake for peer {} failed: {}", self.id, why);
                 return Err(Error::HandshakeFailed);
             },
             Ok(HandshakeState::InProgress { response_bytes }) => {
-                debug!("Handshake pending...");
+                log::debug!("Handshake pending...");
                 response_bytes
             },
             Ok(HandshakeState::Completed { response_bytes, remaining_bytes }) => {
-                info!("Handshake for client {} successful", self.id);
-                debug!("Remaining bytes after handshake: {}", remaining_bytes.len());
+                log::info!("Handshake for client {} successful", self.id);
+                log::debug!("Remaining bytes after handshake: {}", remaining_bytes.len());
                 self.handshake_completed = true;
 
                 if !remaining_bytes.is_empty() {
@@ -119,7 +113,7 @@ impl<S> Peer<S>
         Ok(Async::Ready(()))
     }
 
-    fn handle_incoming_bytes(&mut self) -> Result<()> {
+    fn handle_incoming_bytes(&mut self) -> Result<(), Error> {
         let data = self.buffer.take();
 
         let event_results = self.event_handler.handle(&data)?;
@@ -150,7 +144,7 @@ impl<S> Drop for Peer<S>
         let mut peers = self.shared.peers.write();
         peers.remove(&self.id);
 
-        info!("Closing connection: {}", self.id);
+        log::info!("Closing connection: {}", self.id);
     }
 }
 

@@ -2,7 +2,6 @@
 #![warn(rust_2018_idioms)]
 #![allow(elided_lifetimes_in_paths)]
 
-mod error;
 mod shared;
 mod config;
 mod media;
@@ -18,14 +17,12 @@ mod web;
 
 use {
     futures::future::lazy,
-    self::{
-        shared::Shared,
-        error::{Error, Result},
-    },
+    anyhow::Result,
+    self::shared::Shared,
 };
 
 
-fn main() {
+fn main() -> Result<()> {
     if let Err(why) = init_logger() {
         eprintln!("Failed to initialize logger: {}", why);
     };
@@ -43,9 +40,11 @@ fn main() {
 
         Ok(())
     }));
+
+    Ok(())
 }
 
-fn init_logger() -> Result<(), Box<dyn std::error::Error>> {
+fn init_logger() -> Result<()> {
     use {
         fern::{Dispatch, colors::ColoredLevelConfig, log_file},
         log::LevelFilter,

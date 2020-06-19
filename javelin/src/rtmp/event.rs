@@ -1,9 +1,5 @@
 use {
-    std::{
-        collections::VecDeque,
-        rc::Rc,
-    },
-    log::{debug, error, info},
+    std::{collections::VecDeque, rc::Rc},
     rml_rtmp::{
         sessions::{
             ServerSessionResult,
@@ -14,15 +10,11 @@ use {
         time::RtmpTimestamp
     },
     crate::{
-        error::{Error, Result},
         config::RepublishAction,
         shared::Shared,
         media::{Media, Channel},
     },
-    super::{
-        Client,
-        peer,
-    },
+    super::{Client, Error, peer},
 };
 
 #[cfg(feature = "hls")]
@@ -49,7 +41,7 @@ pub struct Handler {
 
 impl Handler {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(peer_id: u64, shared: Shared) -> Result<Self> {
+    pub fn new(peer_id: u64, shared: Shared) -> Result<Self, Error> {
         let results = {
             let mut clients = shared.clients.lock();
             let (client, results) = Client::new(peer_id, shared.clone())?;
@@ -70,11 +62,11 @@ impl Handler {
         Ok(this)
     }
 
-    pub fn handle(&mut self, bytes: &[u8]) -> Result<Vec<EventResult>> {
+    pub fn handle(&mut self, bytes: &[u8]) -> Result<Vec<EventResult>, Error> {
         let results = {
             let mut clients = self.shared.clients.lock();
             let client = clients.get_mut(&self.peer_id).unwrap();
-            client.session.handle_input(bytes)?
+            client.session.handle_input(bytes).map_err(|_| Error::InvalidInput)?
         };
 
         self.handle_server_session_results(results)?;
@@ -82,7 +74,7 @@ impl Handler {
         Ok(self.results.drain(..).collect())
     }
 
-    fn handle_server_session_results(&mut self, results: Vec<ServerSessionResult>) -> Result<()> {
+    fn handle_server_session_results(&mut self, results: Vec<ServerSessionResult>) -> Result<(), Error> {
         use self::ServerSessionResult::*;
 
         for result in results {
@@ -94,7 +86,7 @@ impl Handler {
                     self.handle_event(event)?;
                 },
                 UnhandleableMessageReceived(_) => {
-                    debug!("Unhandleable message received");
+                    log::debug!("Unhandleable message received");
                 },
             }
         }
@@ -102,7 +94,7 @@ impl Handler {
         Ok(())
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<()> {
+    fn handle_event(&mut self, event: Event) -> Result<(), Error> {
         use self::Event::*;
 
         match event {
@@ -128,18 +120,18 @@ impl Handler {
                 self.publish_stream_finished(&app_name, &stream_key)?;
             },
             _ => {
-                debug!("Event: {:?}", event);
+                log::debug!("Event: {:?}", event);
             }
         }
 
         Ok(())
     }
 
-    fn connection_requested(&mut self, request_id: u32, app_name: &str) -> Result<()> {
-        info!("Connection request from client {} for app '{}'", self.peer_id, app_name);
+    fn connection_requested(&mut self, request_id: u32, app_name: &str) -> Result<(), Error> {
+        log::info!("Connection request from client {} for app '{}'", self.peer_id, app_name);
 
         if app_name.is_empty() {
-            return Err(Error::from("Application name can not be empty"));
+            return Err(Error::ApplicationNameRequired);
         }
 
         let results = {
@@ -153,17 +145,22 @@ impl Handler {
         Ok(())
     }
 
-    fn publish_requested(&mut self, request_id: u32, app_name: String, stream_key: String) -> Result<()> {
-        info!("Client {} requested publishing to app '{}' using stream key {}", self.peer_id, app_name, stream_key);
+    fn publish_requested(&mut self, request_id: u32, app_name: String, stream_key: String) -> Result<(), Error> {
+        log::info!(
+            "Client {} requested publishing to app '{}' using stream key {}",
+            self.peer_id,
+            app_name,
+            stream_key
+        );
 
         {
             let config = self.shared.config.read();
             if stream_key.is_empty() || !config.permitted_stream_keys.contains(&stream_key) {
-                return Err(Error::SessionError(format!("Stream key '{}' is not permitted", stream_key)));
+                return Err(Error::StreamKeyNotPermitted(stream_key));
             }
         }
 
-        debug!("Stream key '{}' permitted", stream_key);
+        log::debug!("Stream key '{}' permitted", stream_key);
 
         {
             let mut streams = self.shared.streams.write();
@@ -172,20 +169,21 @@ impl Handler {
                 if let Some(publisher) = &stream.publisher {
                     match config.republish_action {
                         RepublishAction::Replace => {
-                            info!("Another client is already publishing to this app, removing client");
+                            log::info!("Another client is already publishing to this app, removing client");
                             let peers = self.shared.peers.write();
                             let peer = peers.get(publisher).unwrap();
                             peer.unbounded_send(peer::Message::Disconnect).unwrap();
                             stream.unpublish();
                         },
                         RepublishAction::Deny => {
-                            return Err(Error::SessionError(format!("App '{}' is already being published to", app_name)));
+                            return Err(Error::ApplicationInUse(app_name));
                         }
                     }
                 }
             }
         }
 
+        // TODO: lift out of event handler
         #[cfg(feature = "hls")]
         self.register_on_hls_server(app_name.clone());
 
@@ -205,8 +203,8 @@ impl Handler {
 
         match result {
             Err(why) => {
-                error!("Error while accepting publishing request: {:?}", why);
-                return Err(Error::SessionError("Publish request failed".into()));
+                log::error!("Error while accepting publishing request: {:?}", why);
+                return Err(Error::PublishRequestFailed);
             },
             Ok(results) => self.handle_server_session_results(results)?
         }
@@ -214,13 +212,14 @@ impl Handler {
         Ok(())
     }
 
-    fn publish_stream_finished(&mut self, app_name: &str, stream_key: &str) -> Result<()> {
-        info!("Publishing of app '{}' finished", app_name);
+    fn publish_stream_finished(&mut self, app_name: &str, stream_key: &str) -> Result<(), Error> {
+        log::info!("Publishing of app '{}' finished", app_name);
 
         {
             let mut streams = self.shared.streams.write();
-            let stream = streams.get_mut(app_name).unwrap();
-            stream.unpublish();
+            if let Some(stream) = streams.get_mut(app_name) {
+                stream.unpublish();
+            }
         }
 
         {
@@ -233,20 +232,19 @@ impl Handler {
         Ok(())
     }
 
-    fn play_requested(&mut self, request_id: u32, app_name: &str, stream_id: u32) -> Result<()> {
-        info!("Client {} requested playback of app '{}'", self.peer_id, app_name);
+    fn play_requested(&mut self, request_id: u32, app_name: &str, stream_id: u32) -> Result<(), Error> {
+        log::info!("Client {} requested playback of app '{}'", self.peer_id, app_name);
 
         let results = {
             let mut clients = self.shared.clients.lock();
-            let client = clients.get_mut(&self.peer_id).unwrap();
-
-            {
+            if let Some(client) = clients.get_mut(&self.peer_id) {
                 let mut streams = self.shared.streams.write();
                 let mut stream = streams.entry(app_name.to_string()).or_insert_with(Channel::new);
                 client.watch(&mut stream, stream_id, app_name.to_string());
+                client.accept_request(request_id)?
+            } else {
+                vec![]
             }
-
-            client.accept_request(request_id)?
         };
 
         {
@@ -256,19 +254,19 @@ impl Handler {
 
             if let Some(ref metadata) = streams.get(app_name).unwrap().metadata {
                 let packet = client.session.send_metadata(stream_id, Rc::new(metadata.clone()))
-                    .map_err(|_| Error::SessionError("Failed to send metadata".into()))?;
+                    .map_err(|_| Error::DataPreparationFailed("metadata"))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
             if let Some(ref v_seq_h) = streams.get(app_name).unwrap().video_seq_header {
                 let packet = client.session.send_video_data(stream_id, v_seq_h.clone(), RtmpTimestamp::new(0), false)
-                    .map_err(|_| Error::SessionError("Failed to send video data".into()))?;
+                    .map_err(|_| Error::DataPreparationFailed("video data"))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
             if let Some(ref a_seq_h) = streams.get(app_name).unwrap().audio_seq_header {
                 let packet = client.session.send_audio_data(stream_id, a_seq_h.clone(), RtmpTimestamp::new(0), false)
-                    .map_err(|_| Error::SessionError("Failed to send audio data".into()))?;
+                    .map_err(|_| Error::DataPreparationFailed("audio data"))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
         }
@@ -278,8 +276,8 @@ impl Handler {
         Ok(())
     }
 
-    fn metadata_received(&mut self, app_name: &str, metadata: &StreamMetadata) -> Result<()> {
-        debug!("Received stream metadata for app '{}'", app_name);
+    fn metadata_received(&mut self, app_name: &str, metadata: &StreamMetadata) -> Result<(), Error> {
+        log::debug!("Received stream metadata for app '{}'", app_name);
 
         let mut streams = self.shared.streams.write();
         if let Some(stream) = streams.get_mut(app_name) {
@@ -292,7 +290,7 @@ impl Handler {
                 if let Some(watched_stream) = client.watched_stream() {
                     let packet = client.session
                         .send_metadata(watched_stream, Rc::new(metadata.clone()))
-                        .map_err(|_| Error::SessionError("Failed to send metadata".into()))?;
+                        .map_err(|_| Error::DataPreparationFailed("metadata"))?;
 
                     self.results.push_back(EventResult::Outbound(self.peer_id, packet));
                 }
@@ -302,15 +300,16 @@ impl Handler {
         Ok(())
     }
 
-    fn multimedia_data_received(&mut self, stream_key: &str, media: &Media) -> Result<()> {
+    fn multimedia_data_received(&mut self, stream_key: &str, media: &Media) -> Result<(), Error> {
         // debug!("Received video data for stream with key {}", stream_key);
 
+        // TODO: lift out of event handler
         #[cfg(feature = "hls")]
         self.send_to_hls_writer(media.clone());
 
         let app_name = self.shared
             .app_name_from_stream_key(&stream_key)
-            .ok_or_else(|| Error::SessionError("No app for stream key".into()))?;
+            .ok_or( Error::ApplicationNameInvalid)?;
 
         let mut streams = self.shared.streams.write();
         if let Some(stream) = streams.get_mut(&app_name) {
@@ -338,13 +337,17 @@ impl Handler {
                 if let Some(active_stream) = client.watched_stream() {
                     let packet = match &media {
                         Media::AAC(timestamp, bytes) => {
-                            client.session.send_audio_data(active_stream, bytes.clone(), timestamp.clone(), true)?
+                            client.session
+                                .send_audio_data(active_stream, bytes.clone(), timestamp.clone(), true)
+                                .map_err(|_| Error::DataPreparationFailed("audio data"))?
                         }
                         Media::H264(timestamp, ref bytes) => {
                             if media.is_keyframe() {
                                 client.received_video_keyframe = true;
                             }
-                            client.session.send_video_data(active_stream, bytes.clone(), timestamp.clone(), true)?
+                            client.session
+                                .send_video_data(active_stream, bytes.clone(), timestamp.clone(), true)
+                                .map_err(|_| Error::DataPreparationFailed("video data"))?
                         },
                     };
 
@@ -360,15 +363,16 @@ impl Handler {
     fn register_on_hls_server(&mut self, app_name: String) {
         if let Some(sender) = self.shared.hls_sender() {
             let (request, response) = oneshot::channel();
-            sender.unbounded_send((app_name, request))
-                .map_err(|err| error!("{:?}", err))
-                .map(|_| {
-                    response.map(|hls_writer_handle| {
-                        self.media_sender = Some(hls_writer_handle);
-                    })
-                    .wait().unwrap()
-                })
-                .unwrap();
+
+            if let Err(err) = sender.unbounded_send((app_name, request)) {
+                log::error!("{}", err);
+            }
+
+            if let Err(err) = response.map(|hls_writer_handle| {
+                self.media_sender = Some(hls_writer_handle);
+            }).wait() {
+                log::error!("{}", err);
+            }
         }
     }
 

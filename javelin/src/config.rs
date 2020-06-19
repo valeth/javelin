@@ -3,12 +3,12 @@ use {
         collections::HashSet,
         net::SocketAddr,
         str::FromStr,
-        result,
         path::PathBuf,
     },
     log::debug,
     clap::ArgMatches,
-    crate::{args, Error},
+    thiserror::Error,
+    crate::args,
 };
 
 #[cfg(feature = "tls")]
@@ -18,8 +18,11 @@ use {
         io::Read,
         env,
     },
-    crate::error::Result,
 };
+
+#[derive(Error, Debug)]
+#[error("Failed to parse {0}")]
+pub struct ParseError(&'static str);
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -29,16 +32,14 @@ pub enum RepublishAction {
 }
 
 impl FromStr for RepublishAction {
-    type Err = Error;
+    type Err = ParseError;
 
-    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
-        let action = match s {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
             "replace" => RepublishAction::Replace,
             "deny" => RepublishAction::Deny,
-            _ => return Err(Error::from(format!("Failed to parse RepublishAction, '{}' not valid", s)))
-        };
-
-        Ok(action)
+            _ => return Err(ParseError("RepublishAction"))
+        })
     }
 }
 
@@ -71,7 +72,7 @@ impl TlsConfig {
         env::var("JAVELIN_TLS_PASSWORD").expect("Password for TLS certificate required")
     }
 
-    pub fn read_cert(&self) -> Result<Vec<u8>> {
+    pub fn read_cert(&self) -> anyhow::Result<Vec<u8>> {
         let path = self.cert_path.clone().expect("");
         let mut file = File::open(path)?;
         let mut buf = Vec::with_capacity(2500);

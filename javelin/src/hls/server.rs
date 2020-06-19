@@ -1,17 +1,13 @@
 use {
     std::{fs, path::Path},
-    log::{debug, error, info},
     tokio::prelude::*,
     futures::{
         try_ready,
         sync::{mpsc, oneshot},
     },
+    anyhow::Result,
     super::writer::Writer,
-    crate::{
-        media,
-        shared::Shared,
-        Result,
-    },
+    crate::{media, shared::Shared},
 };
 
 
@@ -32,11 +28,11 @@ impl Server {
         let (sender, receiver) = mpsc::unbounded();
 
         let hls_root = shared.config.read().hls.root_dir.clone();
-        info!("HLS directory located at '{}'", hls_root.display());
+        log::info!("HLS directory located at '{}'", hls_root.display());
 
-        debug!("Attempting cleanup of HLS directory");
+        log::debug!("Attempting cleanup of HLS directory");
         directory_cleanup(hls_root).expect("Failed to clean up HLS directory");
-        info!("HLS directory purged");
+        log::info!("HLS directory purged");
 
         Self { sender, receiver, shared }
     }
@@ -57,7 +53,7 @@ impl Future for Server {
 
             match Writer::create(app_name, receiver, &self.shared) {
                 Ok(writer) => { tokio::spawn(writer); },
-                Err(why) => error!("Failed to create writer: {:?}", why),
+                Err(why) => log::error!("Failed to create writer: {:?}", why),
             }
         }
 

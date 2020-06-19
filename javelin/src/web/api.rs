@@ -1,8 +1,4 @@
 use {
-    std::{
-        error::Error as StdError,
-        fmt::{self, Display},
-    },
     warp::{
         Filter,
         Reply,
@@ -10,29 +6,18 @@ use {
         filters::BoxedFilter,
     },
     serde_json::json,
+    thiserror::Error,
     crate::Shared,
 };
 
 
-#[derive(Clone, Debug)]
+#[derive(Error, Debug)]
 pub enum Error {
+    #[error("No such resource")]
     NoSuchResource,
+
+    #[error("Stream could not be found")]
     StreamNotFound,
-}
-
-impl StdError for Error {
-    fn description(&self) -> &str {
-        match *self {
-            Error::NoSuchResource => "No such resource",
-            Error::StreamNotFound => "Stream could not be found"
-        }
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
 }
 
 

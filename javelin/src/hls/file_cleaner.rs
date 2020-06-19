@@ -4,12 +4,8 @@ use {
         fs,
         time::{Instant, Duration},
     },
-    log::{debug, error},
     futures::sync::mpsc::{self, UnboundedSender, UnboundedReceiver},
-    tokio::{
-        prelude::*,
-        timer::DelayQueue,
-    },
+    tokio::{prelude::*, timer::DelayQueue},
     crate::shared::Shared,
 };
 
@@ -42,7 +38,7 @@ impl FileCleaner {
             match self.receiver.poll() {
                 Ok(Async::Ready(Some((duration, files)))) => {
                     let timestamp = Instant::now() + ((duration / 100) * 150);
-                    debug!("{} files queued for cleanup at {:?}", files.len(), timestamp);
+                    log::debug!("{} files queued for cleanup at {:?}", files.len(), timestamp);
                     self.items.insert_at(files, timestamp);
                 },
                 _ => break,
@@ -64,7 +60,7 @@ impl Future for FileCleaner {
                 Ok(Async::Ready(None)) => return Ok(Async::NotReady),
                 Ok(Async::Ready(Some(files))) => remove_files(&files.into_inner()),
                 Err(why) => {
-                    error!("{:?}", why);
+                    log::error!("{:?}", why);
                     return Err(());
                 }
             }
@@ -73,7 +69,7 @@ impl Future for FileCleaner {
 }
 
 fn remove_files(paths: &[PathBuf]) {
-    debug!("Cleaning up {} files", paths.len());
+    log::debug!("Cleaning up {} files", paths.len());
 
     for path in paths {
         remove_file(path);
@@ -83,6 +79,6 @@ fn remove_files(paths: &[PathBuf]) {
 
 fn remove_file(path: &PathBuf) {
     if let Err(why) = fs::remove_file(path) {
-        error!("Failed to remove file '{}': {}", path.display(), why);
+        log::error!("Failed to remove file '{}': {}", path.display(), why);
     }
 }

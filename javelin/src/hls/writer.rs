@@ -1,14 +1,9 @@
 use {
-    std::{
-        path::PathBuf,
-        fs,
-        convert::TryFrom
-    },
-    log::{debug, error, warn},
+    std::{path::PathBuf, fs, convert::TryFrom},
     futures::try_ready,
     tokio::prelude::*,
-    bytes::Bytes,
     chrono::Utc,
+    anyhow::{Result, bail},
     javelin_codec::{
         FormatReader,
         FormatWriter,
@@ -17,13 +12,10 @@ use {
         flv,
         mpegts::TransportStream,
     },
-    super::{
-        m3u8::Playlist,
-    },
+    super::m3u8::Playlist,
     crate::{
         shared::Shared,
-        media::{self, Media},
-        error::{Error, Result},
+        media::{self, Media}
     },
 };
 
@@ -51,10 +43,10 @@ impl Writer {
         let playlist_path = stream_path.join("playlist.m3u8");
 
         if stream_path.exists() && !stream_path.is_dir() {
-            return Err(Error::from(format!("Path '{}' exists, but is not a directory", stream_path.display())));
+            bail!("Path '{}' exists, but is not a directory", stream_path.display());
         }
 
-        debug!("Creating HLS directory at '{}'", stream_path.display());
+        log::debug!("Creating HLS directory at '{}'", stream_path.display());
         fs::create_dir_all(&stream_path)?;
 
         Ok(Self {
@@ -71,19 +63,17 @@ impl Writer {
         })
     }
 
-    fn handle_h264<T>(&mut self, timestamp: T, bytes: Bytes) -> Result<()>
+    fn handle_h264<T>(&mut self, timestamp: T, bytes: &[u8]) -> Result<()>
         where T: Into<u64>
     {
         let timestamp: u64 = timestamp.into();
 
-        let flv_packet = flv::tag::VideoData::try_from(bytes.as_ref()).unwrap();
+        let flv_packet = flv::tag::VideoData::try_from(bytes)?;
         let payload = &flv_packet.body;
 
         if flv_packet.is_sequence_header() {
-            if let Err(why) = self.avc_coder.set_dcr(payload.as_ref()) {
-                log::error!("{}", why);
-            }
-            return Ok(());
+            self.avc_coder.set_dcr(payload.as_ref())?;
+            return Ok(())
         }
 
         let keyframe = flv_packet.is_keyframe();
@@ -98,9 +88,7 @@ impl Writer {
             if timestamp >= self.next_write {
                 let filename = format!("{}-{}.mpegts", Utc::now().timestamp(), self.keyframe_counter);
                 let path = self.stream_path.join(&filename);
-                if let Err(why) = self.buffer.write_to_file(&path) {
-                    return Err(Error::CodecError(why.into()))
-                }
+                self.buffer.write_to_file(&path)?;
                 self.playlist.add_media_segment(filename, keyframe_duration);
                 self.next_write += self.write_interval;
             }
@@ -109,71 +97,43 @@ impl Writer {
             self.last_keyframe = timestamp;
         }
 
-        let video = match self.avc_coder.read_format(avc::Avcc, &payload) {
-            Ok(Some(avc)) => match self.avc_coder.write_format(avc::AnnexB, avc) {
-                Ok(video) => video,
-                Err(why) => {
-                    error!("{}", why);
-                    return Ok(())
-                }
-            },
-            Err(why) => {
-                error!("{}", why);
-                return Ok(())
-            }
-            _ => {
-                debug!("Got empty result");
-                return Ok(())
-            }
+        let video = match self.avc_coder.read_format(avc::Avcc, &payload)? {
+            Some(avc) => self.avc_coder.write_format(avc::AnnexB, avc)?,
+            None => return Ok(())
         };
 
         let comp_time = flv_packet.composition_time as u64;
 
         if let Err(why) = self.buffer.push_video(timestamp, comp_time, keyframe, video) {
-            warn!("Failed to put data into buffer: {:?}", why);
+            log::warn!("Failed to put data into buffer: {:?}", why);
         }
 
         Ok(())
     }
 
-    fn handle_aac<T>(&mut self, timestamp: T, bytes: Bytes) -> Result<()>
+    fn handle_aac<T>(&mut self, timestamp: T, bytes: &[u8]) -> Result<()>
         where T: Into<u64>
     {
         let timestamp: u64 = timestamp.into();
 
-        let flv = flv::tag::AudioData::try_from(bytes.as_ref()).unwrap();
+        let flv = flv::tag::AudioData::try_from(bytes).unwrap();
 
         if flv.is_sequence_header() {
-            if let Err(why) = self.aac_coder.set_asc(flv.body.as_ref()) {
-                log::error!("{}", why);
-            };
-            return Ok(());
+            self.aac_coder.set_asc(flv.body.as_ref())?;
+            return Ok(())
         }
 
         if self.keyframe_counter == 0 {
             return Ok(());
         }
 
-        let audio = match self.aac_coder.read_format(aac::Raw, &flv.body) {
-            Ok(Some(raw_aac)) => match self.aac_coder.write_format(aac::AudioDataTransportStream, raw_aac) {
-                Ok(audio) => audio,
-                Err(why) => {
-                    error!("{}", why);
-                    return Ok(())
-                }
-            },
-            Err(why) => {
-                error!("{}", why);
-                return Ok(())
-            }
-            _ => {
-                debug!("Got empty result");
-                return Ok(())
-            }
+        let audio = match self.aac_coder.read_format(aac::Raw, &flv.body)? {
+            Some(raw_aac) => self.aac_coder.write_format(aac::AudioDataTransportStream, raw_aac)?,
+            None => return Ok(())
         };
 
         if let Err(why) = self.buffer.push_audio(timestamp, audio) {
-            warn!("Failed to put data into buffer: {:?}", why);
+            log::warn!("Failed to put data into buffer: {:?}", why);
         }
 
         Ok(())
@@ -181,8 +141,8 @@ impl Writer {
 
     fn handle(&mut self, media: Media) -> Result<()> {
         match media {
-            Media::H264(timestamp, bytes) => self.handle_h264(timestamp.value, bytes),
-            Media::AAC(timestamp, bytes) => self.handle_aac(timestamp.value, bytes),
+            Media::H264(timestamp, bytes) => self.handle_h264(timestamp.value, &bytes),
+            Media::AAC(timestamp, bytes) => self.handle_aac(timestamp.value, &bytes),
         }
     }
 }
@@ -194,7 +154,7 @@ impl Future for Writer {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         while let Some(media) = try_ready!(self.receiver.poll()) {
-            self.handle(media).map_err(|why| error!("{:?}", why))?;
+            self.handle(media).map_err(|why| log::error!("{:?}", why))?;
         }
 
         Ok(Async::Ready(()))

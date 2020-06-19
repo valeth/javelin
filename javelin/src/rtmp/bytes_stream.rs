@@ -2,7 +2,6 @@ use {
     tokio::{prelude::*, io},
     futures::try_ready,
     bytes::{Bytes, BytesMut, BufMut},
-    crate::error::Error,
 };
 
 
@@ -57,7 +56,7 @@ impl<S> Stream for BytesStream<S>
     where S: AsyncRead + AsyncWrite
 {
     type Item = Bytes;
-    type Error = Error;
+    type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         let is_socket_closed = self.fill_read_buffer()?.is_ready();

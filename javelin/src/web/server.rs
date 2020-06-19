@@ -1,11 +1,6 @@
 use {
     std::thread,
-    warp::{
-        Filter,
-        Reply,
-        Rejection,
-        http::StatusCode,
-    },
+    warp::{Filter, Reply, Rejection, http::StatusCode},
     serde_json::json,
     super::api::{
         api,

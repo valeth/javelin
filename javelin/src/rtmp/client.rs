@@ -4,8 +4,8 @@ use {
         ServerSessionConfig,
         ServerSessionResult
     },
+    super::Error,
     crate::{
-        error::{Error, Result},
         media::Channel,
         shared::Shared,
     },
@@ -31,9 +31,10 @@ pub struct Client {
 
 impl Client {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(peer_id: u64, shared: Shared) -> Result<(Self, Vec<ServerSessionResult>)> {
+    pub fn new(peer_id: u64, shared: Shared) -> Result<(Self, Vec<ServerSessionResult>), Error> {
         let session_config = ServerSessionConfig::new();
-        let (session, results) = ServerSession::new(session_config)?;
+        let (session, results) = ServerSession::new(session_config)
+            .map_err(|_| Error::SessionCreationFailed)?;
 
         let this = Self {
             peer_id,
@@ -46,8 +47,8 @@ impl Client {
         Ok((this, results))
     }
 
-    pub fn accept_request(&mut self, request_id: u32) -> Result<Vec<ServerSessionResult>> {
-        self.session.accept_request(request_id).map_err(|_| Error::RequestError)
+    pub fn accept_request(&mut self, request_id: u32) -> Result<Vec<ServerSessionResult>, Error> {
+        self.session.accept_request(request_id).map_err(|_| Error::RequestNotAccepted(request_id))
     }
 
     pub fn publish(&mut self, channel: &mut Channel, app_name: String, stream_key: String) {

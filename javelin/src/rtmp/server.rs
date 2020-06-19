@@ -5,17 +5,13 @@ use {
         sync::atomic::{AtomicUsize, Ordering},
         time::Duration,
     },
-    log::{info, error},
     futures::try_ready,
     tokio::{
         prelude::*,
         net::{TcpListener, TcpStream, tcp::Incoming},
     },
-    super::{Peer, BytesStream},
-    crate::{
-        error::Error,
-        shared::Shared,
-    },
+    super::{Peer, BytesStream, Error},
+    crate::shared::Shared,
 };
 
 #[cfg(feature = "tls")]
@@ -40,7 +36,7 @@ impl Server {
         let addr = shared.config.read().addr;
         let listener = TcpListener::bind(&addr).expect("Failed to bind TCP listener");
 
-        info!("Starting up Javelin RTMP server on {}", addr);
+        log::info!("Starting up Javelin RTMP server on {}", addr);
 
         Self {
             shared,
@@ -64,7 +60,7 @@ impl Future for Server {
     type Error = ();
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        while let Some(tcp_stream) = try_ready!(self.listener.poll().map_err(|err| error!("{}", err))) {
+        while let Some(tcp_stream) = try_ready!(self.listener.poll().map_err(|err| log::error!("{}", err))) {
             spawner(self.client_id(), tcp_stream, self.shared.clone());
             self.increment_client_id();
         }
@@ -76,14 +72,14 @@ impl Future for Server {
 fn process<S>(id: u64, stream: S, shared: &Shared)
     where S: AsyncRead + AsyncWrite + Send + 'static
 {
-    info!("New client connection: {}", id);
+    log::info!("New client connection: {}", id);
 
     let bytes_stream = BytesStream::new(stream);
     let peer = Peer::new(id, bytes_stream, shared.clone())
         .map_err(|err| {
             match err {
-                Error::IoError(ref err) if err.kind() == IoErrorKind::ConnectionReset => (),
-                _ => error!("{:?}", err)
+                Error::Disconnected(e) if e.kind() == IoErrorKind::ConnectionReset => (),
+                e => log::error!("{}", e)
             }
         });
 
@@ -119,7 +115,7 @@ fn spawner(id: u64, stream: TcpStream, shared: Shared) {
                 Ok(())
             })
             .map_err(|err| {
-                error!("TLS error: {:?}", err);
+                log::error!("TLS error: {:?}", err);
             });
 
         tokio::spawn(tls_accept);

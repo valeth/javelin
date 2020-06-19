@@ -1,17 +1,10 @@
 use {
-    std::{
-        fs,
-        path::PathBuf,
-        time::Duration,
-    },
-    log::error,
+    std::{fs, path::PathBuf, time::Duration},
     m3u8_rs::playlist::{MediaPlaylist, MediaSegment},
     tempfile::NamedTempFile,
+    anyhow::Result,
     super::file_cleaner,
-    crate::{
-        error::Result,
-        shared::Shared
-    },
+    crate::shared::Shared,
 };
 
 #[cfg(unix)]
@@ -85,7 +78,7 @@ impl Playlist {
         self.playlist.segments.push(segment);
 
         if let Err(why) = self.atomic_update() {
-            error!("Failed to update playlist: {:?}", why);
+            log::error!("Failed to update playlist: {:?}", why);
         }
     }
 
@@ -125,7 +118,7 @@ impl Drop for Playlist {
         self.playlist.end_list = true;
 
         if let Err(why) = self.atomic_update() {
-            error!("Failed to write end tag to playlist: {:?}", why);
+            log::error!("Failed to write end tag to playlist: {:?}", why);
         }
     }
 }
