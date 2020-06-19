@@ -48,10 +48,6 @@ version = "0.2"
 optional = true
 version = "0.2"
 
-[dependencies.mpeg2ts]
-optional = true
-version = "0.1"
-
 [dependencies.m3u8-rs]
 optional = true
 version = "1.0"
@@ -76,6 +72,6 @@ path = "../javelin-codec"
 [features]
 default = ["tls", "hls", "web"]
 tls = ["native-tls", "tokio-tls"]
-hls = ["mpeg2ts", "m3u8-rs", "tempfile", "javelin-codec"]
+hls = ["m3u8-rs", "tempfile", "javelin-codec/mpegts"]
 web = ["warp", "serde_json", "hls"]
 

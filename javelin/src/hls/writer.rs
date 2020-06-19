@@ -15,9 +15,9 @@ use {
         avc::{self, AvcCoder},
         aac::{self, AacCoder},
         flv,
+        mpegts::TransportStream,
     },
     super::{
-        transport_stream::Buffer as TsBuffer,
         m3u8::Playlist,
     },
     crate::{
@@ -34,7 +34,7 @@ pub struct Writer {
     next_write: u64,
     last_keyframe: u64,
     keyframe_counter: usize,
-    buffer: TsBuffer,
+    buffer: TransportStream,
     playlist: Playlist,
     stream_path: PathBuf,
     avc_coder: AvcCoder,
@@ -63,7 +63,7 @@ impl Writer {
             next_write,
             last_keyframe: 0,
             keyframe_counter: 0,
-            buffer: TsBuffer::new(),
+            buffer: TransportStream::new(),
             playlist: Playlist::new(playlist_path, shared),
             avc_coder: AvcCoder::new(),
             aac_coder: AacCoder::new(),
@@ -98,7 +98,9 @@ impl Writer {
             if timestamp >= self.next_write {
                 let filename = format!("{}-{}.mpegts", Utc::now().timestamp(), self.keyframe_counter);
                 let path = self.stream_path.join(&filename);
-                self.buffer.write_to_file(&path)?;
+                if let Err(why) = self.buffer.write_to_file(&path) {
+                    return Err(Error::CodecError(why.into()))
+                }
                 self.playlist.add_media_segment(filename, keyframe_duration);
                 self.next_write += self.write_interval;
             }

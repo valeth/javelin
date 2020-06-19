@@ -5,7 +5,6 @@ use {
 
 #[cfg(feature = "hls")]
 use {
-    mpeg2ts::Error as TransportStreamError,
     javelin_codec::CodecError,
 };
 
@@ -22,8 +21,6 @@ pub enum Error {
     RequestError,
     SessionError(String),
     #[cfg(feature = "hls")]
-    TransportStreamError(TransportStreamError),
-    #[cfg(feature = "hls")]
     CodecError(CodecError)
 }
 
@@ -36,13 +33,6 @@ impl From<io::Error> for Error {
 impl From<RtmpSessionError> for Error {
     fn from(err: RtmpSessionError) -> Self {
         Error::RtmpSessionError(err)
-    }
-}
-
-#[cfg(feature = "hls")]
-impl From<TransportStreamError> for Error {
-    fn from(err: TransportStreamError) -> Self {
-        Error::TransportStreamError(err)
     }
 }
 

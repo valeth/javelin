@@ -5,6 +5,8 @@ pub mod error;
 pub mod flv;
 pub mod avc;
 pub mod aac;
+#[cfg(feature = "mpegts")]
+pub mod mpegts;
 
 pub use self::error::CodecError;
 

@@ -6,6 +6,8 @@ use {
         flv::FlvError,
     }
 };
+#[cfg(feature = "mpegts")]
+use crate::mpegts::TsError;
 
 
 #[derive(Error, Debug)]
@@ -18,4 +20,8 @@ pub enum CodecError {
 
     #[error(transparent)]
     FlvError(#[from] FlvError),
+
+    #[cfg(feature = "mpegts")]
+    #[error(transparent)]
+    TsError(#[from] TsError),
 }
