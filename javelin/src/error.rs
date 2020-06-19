@@ -6,7 +6,7 @@ use {
 #[cfg(feature = "hls")]
 use {
     mpeg2ts::Error as TransportStreamError,
-    javelin_codec::Error as CodecError,
+    javelin_codec::CodecError,
 };
 
 

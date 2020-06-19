@@ -1,29 +1,45 @@
-pub(crate) mod utils;
+#![deny(unused_must_use)]
+#![warn(rust_2018_idioms)]
+
+#[macro_use] mod macros;
+pub mod error;
+pub mod flv;
 pub mod avc;
 pub mod aac;
-pub mod error;
+
+pub use self::error::CodecError;
 
 
-use std::sync::Arc;
-use parking_lot::RwLock;
-pub(crate) use self::{
-    avc::dcr::DecoderConfigurationRecord,
-    aac::config::AudioSpecificConfiguration,
-};
-pub use self::error::{Error, Result};
+/// Decode bytes into a specific format.
+pub trait ReadFormat<O> {
+    type Context;
+    type Error;
 
-
-#[derive(Debug, Clone)]
-pub struct SharedState {
-    pub dcr: Arc<RwLock<Option<DecoderConfigurationRecord>>>,
-    pub asc: Arc<RwLock<Option<AudioSpecificConfiguration>>>,
+    fn read_format(&self, input: &[u8], ctx: &Self::Context) -> Result<O, Self::Error>;
 }
 
-impl SharedState {
-    pub fn new() -> Self {
-        Self {
-            dcr: Arc::new(RwLock::new(None)),
-            asc: Arc::new(RwLock::new(None)),
-        }
-    }
+/// Encode bytes from a specific format.
+pub trait WriteFormat<I> {
+    type Context;
+    type Error;
+
+    fn write_format(&self, input: I, ctx: &Self::Context) -> Result<Vec<u8>, Self::Error>;
+}
+
+pub trait FormatReader<F>
+    where F: ReadFormat<Self::Output, Error=Self::Error>
+{
+    type Output;
+    type Error;
+
+    fn read_format(&mut self, format: F, input: &[u8]) -> Result<Option<Self::Output>, Self::Error>;
+}
+
+pub trait FormatWriter<F>
+    where F: WriteFormat<Self::Input, Error=Self::Error>
+{
+    type Input;
+    type Error;
+
+    fn write_format(&mut self, format: F, input: Self::Input) -> Result<Vec<u8>, Self::Error>;
 }

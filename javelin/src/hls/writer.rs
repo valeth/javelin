@@ -1,10 +1,21 @@
 use {
-    std::{path::PathBuf, fs},
+    std::{
+        path::PathBuf,
+        fs,
+        convert::TryFrom
+    },
     log::{debug, error, warn},
     futures::try_ready,
     tokio::prelude::*,
     bytes::Bytes,
     chrono::Utc,
+    javelin_codec::{
+        FormatReader,
+        FormatWriter,
+        avc::{self, AvcCoder},
+        aac::{self, AacCoder},
+        flv,
+    },
     super::{
         transport_stream::Buffer as TsBuffer,
         m3u8::Playlist,
@@ -16,9 +27,6 @@ use {
     },
 };
 
-#[cfg(feature = "hls")]
-use javelin_codec::{avc, aac};
-
 
 pub struct Writer {
     receiver: media::Receiver,
@@ -27,9 +35,10 @@ pub struct Writer {
     last_keyframe: u64,
     keyframe_counter: usize,
     buffer: TsBuffer,
-    shared_state: javelin_codec::SharedState,
     playlist: Playlist,
     stream_path: PathBuf,
+    avc_coder: AvcCoder,
+    aac_coder: AacCoder,
 }
 
 impl Writer {
@@ -48,7 +57,6 @@ impl Writer {
         debug!("Creating HLS directory at '{}'", stream_path.display());
         fs::create_dir_all(&stream_path)?;
 
-
         Ok(Self {
             receiver,
             write_interval,
@@ -56,8 +64,9 @@ impl Writer {
             last_keyframe: 0,
             keyframe_counter: 0,
             buffer: TsBuffer::new(),
-            shared_state: javelin_codec::SharedState::new(),
             playlist: Playlist::new(playlist_path, shared),
+            avc_coder: AvcCoder::new(),
+            aac_coder: AacCoder::new(),
             stream_path,
         })
     }
@@ -67,13 +76,17 @@ impl Writer {
     {
         let timestamp: u64 = timestamp.into();
 
-        let packet = avc::Packet::try_from_buf(bytes, timestamp, &self.shared_state)?;
+        let flv_packet = flv::tag::VideoData::try_from(bytes.as_ref()).unwrap();
+        let payload = &flv_packet.body;
 
-        if packet.is_sequence_header() {
+        if flv_packet.is_sequence_header() {
+            self.avc_coder.set_dcr(payload.as_ref());
             return Ok(());
         }
 
-        if packet.is_keyframe() {
+        let keyframe = flv_packet.is_keyframe();
+
+        if keyframe {
             let keyframe_duration = timestamp - self.last_keyframe;
 
             if self.keyframe_counter == 1 {
@@ -81,7 +94,7 @@ impl Writer {
             }
 
             if timestamp >= self.next_write {
-                let filename = format!("{}-{}.ts", Utc::now().timestamp(), self.keyframe_counter);
+                let filename = format!("{}-{}.mpegts", Utc::now().timestamp(), self.keyframe_counter);
                 let path = self.stream_path.join(&filename);
                 self.buffer.write_to_file(&path)?;
                 self.playlist.add_media_segment(filename, keyframe_duration);
@@ -92,7 +105,27 @@ impl Writer {
             self.last_keyframe = timestamp;
         }
 
-        if let Err(why) = self.buffer.push_video(&packet) {
+        let video = match self.avc_coder.read_format(avc::Avcc, &payload) {
+            Ok(Some(avc)) => match self.avc_coder.write_format(avc::AnnexB, avc) {
+                Ok(video) => video,
+                Err(why) => {
+                    error!("{}", why);
+                    return Ok(())
+                }
+            },
+            Err(why) => {
+                error!("{}", why);
+                return Ok(())
+            }
+            _ => {
+                debug!("Got empty result");
+                return Ok(())
+            }
+        };
+
+        let comp_time = flv_packet.composition_time as u64;
+
+        if let Err(why) = self.buffer.push_video(timestamp, comp_time, keyframe, video) {
             warn!("Failed to put data into buffer: {:?}", why);
         }
 
@@ -104,13 +137,38 @@ impl Writer {
     {
         let timestamp: u64 = timestamp.into();
 
-        let packet = aac::Packet::try_from_bytes(bytes, timestamp, &self.shared_state)?;
+        let flv = flv::tag::AudioData::try_from(bytes.as_ref()).unwrap();
 
-        if self.keyframe_counter == 0 || packet.is_sequence_header() {
+        if flv.is_sequence_header() {
+            if let Err(why) = self.aac_coder.set_asc(flv.body.as_ref()) {
+                log::error!("{}", why);
+            };
             return Ok(());
         }
 
-        if let Err(why) = self.buffer.push_audio(&packet) {
+        if self.keyframe_counter == 0 {
+            return Ok(());
+        }
+
+        let audio = match self.aac_coder.read_format(aac::Raw, &flv.body) {
+            Ok(Some(raw_aac)) => match self.aac_coder.write_format(aac::AudioDataTransportStream, raw_aac) {
+                Ok(audio) => audio,
+                Err(why) => {
+                    error!("{}", why);
+                    return Ok(())
+                }
+            },
+            Err(why) => {
+                error!("{}", why);
+                return Ok(())
+            }
+            _ => {
+                debug!("Got empty result");
+                return Ok(())
+            }
+        };
+
+        if let Err(why) = self.buffer.push_audio(timestamp, audio) {
             warn!("Failed to put data into buffer: {:?}", why);
         }
 

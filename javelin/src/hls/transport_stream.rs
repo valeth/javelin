@@ -15,7 +15,6 @@ use {
         },
         pes::PesHeader,
     },
-    javelin_codec::{avc, aac},
     crate::Result,
 };
 
@@ -61,7 +60,7 @@ impl Buffer {
         Ok(())
     }
 
-    pub fn push_video(&mut self, video: &avc::Packet) -> Result<()> {
+    pub fn push_video(&mut self, timestamp: u64, composition_time: u64, keyframe: bool, video: Vec<u8>) -> Result<()> {
         use mpeg2ts::{
             ts::{AdaptationField, payload},
             es::StreamId,
@@ -71,11 +70,11 @@ impl Buffer {
         let mut header = default_ts_header(VIDEO_ES_PID)?;
         header.continuity_counter = self.video_continuity_counter;
 
-        let mut buf = Cursor::new(video.try_as_bytes()?);
+        let mut buf = Cursor::new(video);
         let pes_data: Bytes = buf.by_ref().take(153).collect();
-        let pcr = ClockReference::new(video.timestamp() * 90)?;
+        let pcr = ClockReference::new(timestamp * 90)?;
 
-        let adaptation_field = if video.is_keyframe() {
+        let adaptation_field = if keyframe {
             Some(AdaptationField {
                 discontinuity_indicator: false,
                 random_access_indicator: true,
@@ -90,8 +89,8 @@ impl Buffer {
             None
         };
 
-        let pts = Timestamp::new(video.presentation_timestamp() * 90)?;
-        let dts = Timestamp::new(video.timestamp() * 90)?;
+        let pts = Timestamp::new((timestamp + composition_time) * 90)?;
+        let dts = Timestamp::new(timestamp * 90)?;
 
         let packet = TsPacket {
             header: header.clone(),
@@ -133,14 +132,14 @@ impl Buffer {
         Ok(())
     }
 
-    pub fn push_audio(&mut self, audio: &aac::Packet) -> Result<()> {
+    pub fn push_audio(&mut self, timestamp: u64, audio: Vec<u8>) -> Result<()> {
         use mpeg2ts::{
             ts::payload,
             es::StreamId,
             time::Timestamp,
         };
 
-        let mut buf = Cursor::new(audio.to_bytes());
+        let mut buf = Cursor::new(audio);
         let pes_data: Bytes = buf.by_ref().take(153).collect();
 
         let mut header = default_ts_header(AUDIO_ES_PID)?;
@@ -156,7 +155,7 @@ impl Buffer {
                     data_alignment_indicator: false,
                     copyright: false,
                     original_or_copy: false,
-                    pts: Some(Timestamp::new(audio.presentation_timestamp() * 90)?),
+                    pts: Some(Timestamp::new(timestamp * 90)?),
                     dts: None,
                     escr: None,
                 },

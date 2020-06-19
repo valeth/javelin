@@ -1,9 +1,15 @@
-use std::fmt;
-use bytes::{Bytes, BytesMut, IntoBuf};
-use crate::{Error, Result};
+use {
+    std::{
+        fmt,
+        io::Cursor,
+        convert::TryFrom,
+    },
+    bytes::{Bytes, Buf, BufMut},
+    super::AvcError,
+};
 
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum UnitType {
     NonIdrPicture = 1,
     DataPartitionA = 2,
@@ -24,9 +30,11 @@ pub enum UnitType {
     CodedSliceExtension = 20,
 }
 
-impl UnitType {
-    fn try_from(value: u8) -> Result<Self> {
-        let val = match value {
+impl TryFrom<u8> for UnitType {
+    type Error = AvcError;
+
+    fn try_from(val: u8) -> Result<Self, Self::Error> {
+        Ok(match val {
             1 => UnitType::NonIdrPicture,
             2 => UnitType::DataPartitionA,
             3 => UnitType::DataPartitionB,
@@ -44,15 +52,10 @@ impl UnitType {
             15 => UnitType::SequenceParameterSubset,
             19 => UnitType::NotAuxiliaryCoded,
             20 => UnitType::CodedSliceExtension,
-            16 | 17 | 18 | 22 | 23 => {
-                return Err(Error::ParseError(format!("Reserved NAL unit type {}", value)));
-            },
             _ => {
-                return Err(Error::ParseError(format!("Unknown NAL unit type {}", value)));
+                return Err(AvcError::UnsupportedNalUnitType(val))
             },
-        };
-
-        Ok(val)
+        })
     }
 }
 
@@ -60,44 +63,55 @@ impl UnitType {
 /// Network Abstraction Layer Unit (aka NALU) of a H.264 bitstream.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Unit {
-    pub ref_idc: u8,
     pub kind: UnitType,
-    pub data: Bytes, // Raw Byte Sequence Payload (RBSP)
+    ref_idc: u8,
+    data: Bytes, // Raw Byte Sequence Payload (RBSP)
 }
 
 impl Unit {
-    pub fn try_from_bytes(bytes: Bytes) -> Result<Self> {
-        use bytes::Buf;
+    pub fn payload(&self) -> &[u8] {
+        &self.data
+    }
+}
 
-        let mut buf = bytes.into_buf();
+impl TryFrom<&[u8]> for Unit {
+    type Error = AvcError;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        let mut buf = Cursor::new(bytes);
+
         let header = buf.get_u8();
+        // FIXME: return error
         assert_eq!(header >> 7, 0);
+
         let ref_idc = (header >> 5) & 0x03;
         let kind = UnitType::try_from(header & 0x1F)?;
-        let data: Bytes = buf.collect();
+        let data = buf.to_bytes();
 
         Ok(Self { ref_idc, kind, data })
     }
 }
 
-impl Into<Bytes> for Unit {
-    fn into(self) -> Bytes {
-        use bytes::BufMut;
+impl From<&Unit> for Vec<u8> {
+    fn from(val: &Unit) -> Self {
+        let mut tmp = Vec::with_capacity(val.data.len() + 1);
 
-        let mut tmp = BytesMut::with_capacity(self.data.len() + 1);
-
-        let header = (self.ref_idc << 5) | (self.kind as u8);
+        let header = (val.ref_idc << 5) | (val.kind as u8);
         tmp.put_u8(header);
-        tmp.put(self.data);
+        tmp.put(val.data.clone());
+        tmp
+    }
+}
 
-        tmp.freeze()
+impl From<Unit> for Vec<u8> {
+    fn from(val: Unit) -> Self {
+        Self::from(&val)
     }
 }
 
 impl fmt::Debug for Unit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Unit")
-            .field("ref_idc", &self.ref_idc)
             .field("kind", &self.kind)
             .finish()
     }
