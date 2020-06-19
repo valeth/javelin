@@ -95,27 +95,27 @@ impl TryFrom<&[u8]> for VideoData {
     type Error = FlvError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        if bytes.len() < 5 {
-            return Err(FlvError::NotEnoughData)
+        if bytes.len() < 6 {
+            return Err(FlvError::NotEnoughData("FLV Video Tag header"))
         }
 
         let mut buf = Cursor::new(bytes);
 
-        let byte1 = buf.get_u8();
+        let header_a = buf.get_u8();
 
         // Only support AVC payloads
-        let codec_id = byte1 & 0x0F;
+        let codec_id = header_a & 0x0F;
         if codec_id != 7 {
             return Err(FlvError::UnsupportedVideoFormat(codec_id))
         }
 
-        let frame_type = FrameType::try_from(byte1 >> 4)?;
+        let frame_type = FrameType::try_from(header_a >> 4)?;
 
-        let byte2 = buf.get_u32();
+        let header_b = buf.get_u32();
 
-        let packet_type =  AvcPacketType::try_from((byte2 >> 24) as u8)?;
+        let packet_type =  AvcPacketType::try_from((header_b >> 24) as u8)?;
 
-        let composition_time = (byte2 & 0x00_FF_FF_FF) as i32;
+        let composition_time = (header_b & 0x00_FF_FF_FF) as i32;
 
         let mut remaining = Vec::new();
         buf.read_to_end(&mut remaining)?;

@@ -21,16 +21,13 @@ impl ReadFormat<Avc> for Avcc {
             let unit_size = ctx.nalu_size as usize;
 
             if buf.remaining() < unit_size {
-                return Err(AvcError::NotEnoughData);
+                return Err(AvcError::NotEnoughData("NALU size"));
             }
             let nalu_length = buf.get_uint(unit_size) as usize;
 
-            if buf.remaining() < nalu_length {
-                return Err(AvcError::NotEnoughData);
-            }
             let nalu_data = buf.bytes()
                 .get(..nalu_length)
-                .ok_or_else(|| AvcError::NotEnoughData)?
+                .ok_or_else(|| AvcError::NotEnoughData("NALU data"))?
                 .to_owned();
 
             buf.advance(nalu_length);

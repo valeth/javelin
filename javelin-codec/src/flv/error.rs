@@ -21,8 +21,8 @@ pub enum FlvError {
     #[error("Audio format with id {0} is not supported")]
     UnsupportedAudioFormat(u8),
 
-    #[error("Not enough data supplied")]
-    NotEnoughData,
+    #[error("Not enough data: {0}")]
+    NotEnoughData(&'static str),
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),

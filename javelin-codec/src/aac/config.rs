@@ -36,13 +36,11 @@ impl TryFrom<&[u8]> for AudioSpecificConfiguration {
     type Error = AacError;
 
     fn try_from(val: &[u8]) -> Result<Self, Self::Error> {
-        let payload_size = val.len();
-        if payload_size < 2 {
-            return Err(AacError::NotEnoughData(payload_size));
+        if val.len() < 2 {
+            return Err(AacError::NotEnoughData("AAC audio specific config"));
         }
 
         let mut buf = Cursor::new(val);
-
 
         let header_a = buf.get_u8();
         let header_b = buf.get_u8();

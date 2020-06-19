@@ -45,7 +45,7 @@ impl TryFrom<&[u8]> for DecoderConfigurationRecord {
         let mut buf = Cursor::new(bytes);
 
         if buf.remaining() < 7 {
-            return Err(AvcError::NotEnoughData)
+            return Err(AvcError::NotEnoughData("AVC configuration record"))
         }
 
         let version = buf.get_u8();
@@ -61,10 +61,14 @@ impl TryFrom<&[u8]> for DecoderConfigurationRecord {
         let sps_count = buf.get_u8() & 0x1F;
         let mut sps = Vec::new();
         for _ in 0..sps_count {
-            ensure!(buf.remaining() >= 2, AvcError::NotEnoughData);
+            if buf.remaining() < 2 {
+                return Err(AvcError::NotEnoughData("DCR SPS length"));
+            }
             let sps_length = buf.get_u16() as usize;
 
-            ensure!(buf.remaining() >= sps_length, AvcError::NotEnoughData);
+            if buf.remaining() < sps_length {
+                return Err(AvcError::NotEnoughData("DCR SPS data"));
+            }
             let tmp = buf.bytes()[..sps_length].to_owned();
             buf.advance(sps_length);
 
@@ -74,10 +78,14 @@ impl TryFrom<&[u8]> for DecoderConfigurationRecord {
         let pps_count = buf.get_u8();
         let mut pps = Vec::new();
         for _ in 0..pps_count {
-            ensure!(buf.remaining() >= 2, AvcError::NotEnoughData);
+            if buf.remaining() < 2 {
+                return Err(AvcError::NotEnoughData("DCR PPS length"));
+            }
             let pps_length = buf.get_u16() as usize;
 
-            ensure!(buf.remaining() >= pps_length, AvcError::NotEnoughData);
+            if buf.remaining() < pps_length {
+                return Err(AvcError::NotEnoughData("DCR PPS data"));
+            }
             let tmp = buf.bytes()[..pps_length].to_owned();
             buf.advance(pps_length);
 

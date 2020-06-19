@@ -59,10 +59,6 @@ impl WriteFormat<Avc> for AnnexB {
                 t => log::debug!("Received unhandled NALU type {:?}", t),
             }
 
-            if nalu.payload().len() < 5 {
-                return Err(AvcError::NotEnoughData);
-            }
-
             out_buffer.extend(Self::DELIMITER1);
 
             let nalu_data: Vec<u8> = nalu.into();

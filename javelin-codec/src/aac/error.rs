@@ -6,8 +6,8 @@ pub enum AacError {
     #[error("AAC coder not initialized")]
     NotInitialized,
 
-    #[error("Did not get enough data, got {0} bytes")]
-    NotEnoughData(usize),
+    #[error("Not enough data: {0}")]
+    NotEnoughData(&'static str),
 
     #[error("Unsupported audio object type")]
     UnsupportedAudioFormat,

@@ -9,8 +9,8 @@ pub enum AvcError {
     #[error("AVC coder not initialized")]
     NotInitialized,
 
-    #[error("Did not get enough data")]
-    NotEnoughData,
+    #[error("Not enough data: {0}")]
+    NotEnoughData(&'static str),
 
     #[error("Unsupported configuration record version {0}")]
     UnsupportedConfigurationRecordVersion(u8),
