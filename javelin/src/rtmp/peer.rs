@@ -161,7 +161,6 @@ impl<S> Future for Peer<S>
     type Error = Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        // FIXME: potential starvation of socket stream?
         while let Async::Ready(Some(msg)) = self.receiver.poll().unwrap() {
             match msg {
                 Message::Raw(val) => {

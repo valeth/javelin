@@ -1,8 +1,5 @@
 use {
-    std::{
-        error::Error as StdError,
-        thread,
-    },
+    std::thread,
     warp::{
         Filter,
         Reply,
@@ -71,7 +68,7 @@ fn error_handler(err: Rejection) -> Result<impl Reply, Rejection> {
     match err.find_cause() {
         | Some(e @ ApiError::NoSuchResource)
         | Some(e @ ApiError::StreamNotFound) => {
-            json_error_response!(StatusCode::NOT_FOUND, e.description())
+            json_error_response!(StatusCode::NOT_FOUND, e.to_string())
         },
         None => Err(err)
     }

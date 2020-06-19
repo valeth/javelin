@@ -6,7 +6,7 @@ use clap::{
     crate_description,
 };
 
-
+#[allow(deprecated)] // clap issue: https://github.com/clap-rs/clap/issues/1552
 pub fn build_args<'a>() -> ArgMatches<'a> {
     let mut app = App::new(capitalize(crate_name!()))
         .version(crate_version!())

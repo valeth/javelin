@@ -80,7 +80,9 @@ impl Writer {
         let payload = &flv_packet.body;
 
         if flv_packet.is_sequence_header() {
-            self.avc_coder.set_dcr(payload.as_ref());
+            if let Err(why) = self.avc_coder.set_dcr(payload.as_ref()) {
+                log::error!("{}", why);
+            }
             return Ok(());
         }
 
