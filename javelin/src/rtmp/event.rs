@@ -110,14 +110,14 @@ impl Handler {
             StreamMetadataChanged { app_name, metadata, .. } => {
                 self.metadata_received(&app_name, &metadata)?;
             },
-            VideoDataReceived { stream_key, data, timestamp, .. } => {
-                self.multimedia_data_received(&stream_key, &Media::H264(timestamp, data))?;
+            VideoDataReceived { app_name, data, timestamp, .. } => {
+                self.multimedia_data_received(&app_name, &Media::H264(timestamp, data))?;
             },
-            AudioDataReceived { stream_key, data, timestamp, .. } => {
-                self.multimedia_data_received(&stream_key, &Media::AAC(timestamp, data))?;
+            AudioDataReceived { app_name, data, timestamp, .. } => {
+                self.multimedia_data_received(&app_name, &Media::AAC(timestamp, data))?;
             },
-            PublishStreamFinished { app_name, stream_key } => {
-                self.publish_stream_finished(&app_name, &stream_key)?;
+            PublishStreamFinished { app_name, .. } => {
+                self.publish_stream_finished(&app_name)?;
             },
             _ => {
                 log::debug!("Event: {:?}", event);
@@ -196,11 +196,6 @@ impl Handler {
             client.accept_request(request_id)
         };
 
-        {
-            let mut app_names = self.shared.app_names.write();
-            app_names.insert(stream_key, app_name);
-        }
-
         match result {
             Err(why) => {
                 log::error!("Error while accepting publishing request: {:?}", why);
@@ -212,7 +207,7 @@ impl Handler {
         Ok(())
     }
 
-    fn publish_stream_finished(&mut self, app_name: &str, stream_key: &str) -> Result<(), Error> {
+    fn publish_stream_finished(&mut self, app_name: &str) -> Result<(), Error> {
         log::info!("Publishing of app '{}' finished", app_name);
 
         {
@@ -220,11 +215,6 @@ impl Handler {
             if let Some(stream) = streams.get_mut(app_name) {
                 stream.unpublish();
             }
-        }
-
-        {
-            let mut app_names = self.shared.app_names.write();
-            app_names.remove(stream_key);
         }
 
         self.results.push_back(EventResult::Disconnect);
@@ -300,19 +290,15 @@ impl Handler {
         Ok(())
     }
 
-    fn multimedia_data_received(&mut self, stream_key: &str, media: &Media) -> Result<(), Error> {
+    fn multimedia_data_received(&mut self, app_name: &str, media: &Media) -> Result<(), Error> {
         // debug!("Received video data for stream with key {}", stream_key);
 
         // TODO: lift out of event handler
         #[cfg(feature = "hls")]
         self.send_to_hls_writer(media.clone());
 
-        let app_name = self.shared
-            .app_name_from_stream_key(&stream_key)
-            .ok_or( Error::ApplicationNameInvalid)?;
-
         let mut streams = self.shared.streams.write();
-        if let Some(stream) = streams.get_mut(&app_name) {
+        if let Some(stream) = streams.get_mut(app_name) {
             match &media {
                 Media::AAC(_, ref data) if media.is_sequence_header() => {
                     stream.audio_seq_header = Some(data.clone());

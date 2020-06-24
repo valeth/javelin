@@ -23,7 +23,6 @@ pub struct Shared {
     pub peers: Arc<RwLock<HashMap<u64, peer::Sender>>>,
     pub clients: Arc<Mutex<HashMap<u64, Client>>>,
     pub streams: Arc<RwLock<HashMap<String, Channel>>>,
-    pub app_names: Arc<RwLock<HashMap<String, String>>>,
     #[cfg(feature = "hls")]
     hls_sender: Arc<RwLock<Option<hls::server::Sender>>>,
     #[cfg(feature = "hls")]
@@ -37,7 +36,6 @@ impl Shared {
             peers: Arc::new(RwLock::new(HashMap::new())),
             clients: Arc::new(Mutex::new(HashMap::new())),
             streams: Arc::new(RwLock::new(HashMap::new())),
-            app_names: Arc::new(RwLock::new(HashMap::new())),
             #[cfg(feature = "hls")]
             hls_sender: Arc::new(RwLock::new(None)),
             #[cfg(feature = "hls")]
@@ -65,11 +63,5 @@ impl Shared {
     #[cfg(feature = "hls")]
     pub fn fcleaner_sender(&self) -> Option<hls::file_cleaner::Sender> {
         self.fcleaner_sender.read().clone()
-    }
-
-    pub fn app_name_from_stream_key(&self, stream_key: &str) -> Option<String> {
-        let app_names = self.app_names.read();
-        let app_name = app_names.get(stream_key)?;
-        Some(app_name.to_string())
     }
 }

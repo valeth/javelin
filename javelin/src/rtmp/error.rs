@@ -20,9 +20,6 @@ pub enum Error {
     #[error("Application name can not be empty")]
     ApplicationNameRequired,
 
-    #[error("No application found for provided stream key")]
-    ApplicationNameInvalid,
-
     #[error("Stream key \"{0}\" is not permitted")]
     StreamKeyNotPermitted(String),
 
