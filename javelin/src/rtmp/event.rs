@@ -13,7 +13,7 @@ use {
     },
     bytes::Bytes,
     crate::{
-        config::{RepublishAction, RtmpConfig},
+        config::RtmpConfig,
         shared::Shared,
         media::{Media, Channel},
     },
@@ -191,18 +191,11 @@ impl Handler {
             let mut streams = self.shared.streams.write();
             if let Some(stream) = streams.get_mut(&app_name) {
                 if let Some(publisher) = &stream.publisher {
-                    match self.config.republish_action {
-                        RepublishAction::Replace => {
-                            log::info!("Another client is already publishing to this app, removing client");
-                            let peers = self.shared.peers.write();
-                            let peer = peers.get(publisher).unwrap();
-                            peer.unbounded_send(peer::Message::Disconnect).unwrap();
-                            stream.unpublish();
-                        },
-                        RepublishAction::Deny => {
-                            return Err(Error::ApplicationInUse(app_name));
-                        }
-                    }
+                    log::info!("Another client is already publishing to this app, removing client");
+                    let peers = self.shared.peers.write();
+                    let peer = peers.get(publisher).unwrap();
+                    peer.unbounded_send(peer::Message::Disconnect).unwrap();
+                    stream.unpublish();
                 }
             }
         }

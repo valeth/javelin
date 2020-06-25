@@ -23,9 +23,6 @@ pub enum Error {
     #[error("Stream key \"{0}\" is not permitted")]
     StreamKeyNotPermitted(String),
 
-    #[error("Application \"{0}\" is already being published to")]
-    ApplicationInUse(String),
-
     #[error("Publish request failed")]
     PublishRequestFailed,
 

@@ -2,12 +2,10 @@ use {
     std::{
         collections::HashSet,
         net::SocketAddr,
-        str::FromStr,
         path::PathBuf,
     },
     log::debug,
     clap::ArgMatches,
-    thiserror::Error,
     crate::args,
 };
 
@@ -19,29 +17,6 @@ use {
         env,
     },
 };
-
-#[derive(Error, Debug)]
-#[error("Failed to parse {0}")]
-pub struct ParseError(&'static str);
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RepublishAction {
-    Replace,
-    Deny,
-}
-
-impl FromStr for RepublishAction {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "replace" => RepublishAction::Replace,
-            "deny" => RepublishAction::Deny,
-            _ => return Err(ParseError("RepublishAction"))
-        })
-    }
-}
 
 
 #[derive(Debug, Clone)]
@@ -127,7 +102,6 @@ impl WebConfig {
 pub struct RtmpConfig {
     pub addr: SocketAddr,
     pub permitted_stream_keys: HashSet<String>,
-    pub republish_action: RepublishAction,
     #[cfg(feature = "tls")]
     pub tls: TlsConfig,
 }
@@ -140,16 +114,9 @@ impl RtmpConfig {
         let port = args.value_of("port").expect("BUG: default value for 'port' missing");
         let addr = format!("{}:{}", host, port).parse().expect("Invalid address or port name");
 
-        let republish_action = args
-            .value_of("republish_action")
-            .expect("BUG: default value for 'republish_action' missing")
-            .parse()
-            .unwrap(); // this should be safe to unwrap
-
         Self {
             addr,
             permitted_stream_keys,
-            republish_action,
             #[cfg(feature = "tls")]
             tls: TlsConfig::new(&args),
         }
