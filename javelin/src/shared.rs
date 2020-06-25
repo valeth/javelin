@@ -3,13 +3,10 @@ use {
         collections::HashMap,
         sync::Arc,
     },
-    parking_lot::{RwLock, Mutex},
+    parking_lot::RwLock,
     crate::{
         media::Channel,
-        rtmp::{
-            Client,
-            peer,
-        },
+        rtmp::peer,
         config::Config,
     },
 };
@@ -21,7 +18,6 @@ use crate::hls;
 pub struct Shared {
     pub config: Arc<RwLock<Config>>,
     pub peers: Arc<RwLock<HashMap<u64, peer::Sender>>>,
-    pub clients: Arc<Mutex<HashMap<u64, Client>>>,
     pub streams: Arc<RwLock<HashMap<String, Channel>>>,
     #[cfg(feature = "hls")]
     hls_sender: Arc<RwLock<Option<hls::server::Sender>>>,
@@ -34,7 +30,6 @@ impl Shared {
         Self {
             config: Arc::new(RwLock::new(Config::new())),
             peers: Arc::new(RwLock::new(HashMap::new())),
-            clients: Arc::new(Mutex::new(HashMap::new())),
             streams: Arc::new(RwLock::new(HashMap::new())),
             #[cfg(feature = "hls")]
             hls_sender: Arc::new(RwLock::new(None)),

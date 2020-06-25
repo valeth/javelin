@@ -34,4 +34,7 @@ pub enum Error {
 
     #[error("Client disconnected: {0}")]
     Disconnected(#[from] io::Error),
+
+    #[error("Stream ID missing")]
+    NoStreamId,
 }

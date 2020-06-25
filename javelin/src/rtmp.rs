@@ -1,7 +1,6 @@
 mod error;
 mod event;
 pub mod peer;
-pub mod client;
 pub mod server;
 
 
@@ -11,6 +10,5 @@ use self::{
 };
 
 pub use self::{
-    client::Client,
     server::Server,
 };

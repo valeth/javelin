@@ -8,6 +8,8 @@ use {
             HandshakeProcessResult,
             PeerType,
         },
+        sessions::StreamMetadata,
+        time::RtmpTimestamp,
     },
     crate::{BytesStream, shared::Shared},
     super::{
@@ -22,6 +24,9 @@ use {
 
 pub enum Message {
     Raw(Bytes),
+    Metadata(StreamMetadata),
+    VideoData(RtmpTimestamp, Bytes),
+    AudioData(RtmpTimestamp, Bytes),
     Disconnect,
 }
 
@@ -120,10 +125,20 @@ impl<S> Peer<S>
         for result in event_results {
             match result {
                 EventResult::Outbound(target_peer_id, packet) => {
-                    let peers = self.shared.peers.read();
-                    let peer = peers.get(&target_peer_id).unwrap();
-                    // debug!("Packet from {} to {} with {:?} bytes", self.id, target_peer_id, packet.bytes.len());
-                    peer.unbounded_send(Message::Raw(Bytes::from(packet.bytes))).unwrap();
+                    let message = Message::Raw(Bytes::from(packet.bytes));
+                    self.send_to_peer(target_peer_id, message);
+                },
+                EventResult::Metadata(target_peer_id, metadata) => {
+                    let message = Message::Metadata(metadata.clone());
+                    self.send_to_peer(target_peer_id, message);
+                },
+                EventResult::VideoData(target_peer_id, timestamp, payload) => {
+                    let message = Message::VideoData(timestamp.clone(), payload.clone());
+                    self.send_to_peer(target_peer_id, message);
+                },
+                EventResult::AudioData(target_peer_id, timestamp, payload) => {
+                    let message = Message::AudioData(timestamp.clone(), payload.clone());
+                    self.send_to_peer(target_peer_id, message);
                 },
                 EventResult::Disconnect => {
                     self.disconnecting = true;
@@ -133,6 +148,40 @@ impl<S> Peer<S>
         }
 
         Ok(())
+    }
+
+    fn handle_message(&mut self, message: Message) -> Result<(), Error> {
+        match message {
+            Message::Raw(val) => {
+                self.bytes_stream.fill_write_buffer(&val);
+            },
+            Message::Metadata(metadata) => {
+                let packet = self.event_handler.pack_metadata(metadata)?;
+                self.bytes_stream.fill_write_buffer(&packet.bytes);
+            },
+            Message::VideoData(timestamp, payload) => {
+                let packet = self.event_handler.pack_video(timestamp, payload)?;
+                self.bytes_stream.fill_write_buffer(&packet.bytes);
+            },
+            Message::AudioData(timestamp, payload) => {
+                let packet = self.event_handler.pack_audio(timestamp, payload)?;
+                self.bytes_stream.fill_write_buffer(&packet.bytes);
+            },
+            Message::Disconnect => {
+                self.disconnecting = true;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn send_to_peer(&self, peer_id: u64, message: Message) {
+        let peers = self.shared.peers.read();
+        if let Some(peer) = peers.get(&peer_id) {
+            if let Err(why) = peer.unbounded_send(message) {
+                log::error!("Failed to send message to peer {}: {}", peer_id, why);
+            }
+        }
     }
 }
 
@@ -155,14 +204,9 @@ impl<S> Future for Peer<S>
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         while let Async::Ready(Some(msg)) = self.receiver.poll().unwrap() {
-            match msg {
-                Message::Raw(val) => {
-                    self.bytes_stream.fill_write_buffer(&val);
-                },
-                Message::Disconnect => {
-                    self.disconnecting = true;
-                    break;
-                }
+            self.handle_message(msg)?;
+            if self.disconnecting {
+                break;
             }
         }
 
