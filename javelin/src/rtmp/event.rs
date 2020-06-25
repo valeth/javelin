@@ -13,11 +13,10 @@ use {
     },
     bytes::Bytes,
     crate::{
-        config::RtmpConfig,
         shared::Shared,
         media::{Media, Channel},
     },
-    super::{Error, peer},
+    super::{Error, peer, Config},
 };
 
 #[cfg(feature = "hls")]
@@ -41,7 +40,7 @@ pub struct Handler {
     peer_id: u64,
     results: VecDeque<EventResult>,
     shared: Shared,
-    config: RtmpConfig,
+    config: Config,
     session: ServerSession,
     stream_id: Option<u32>,
     received_video_keyframe: bool,
@@ -51,7 +50,7 @@ pub struct Handler {
 
 impl Handler {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(peer_id: u64, shared: Shared, config: RtmpConfig) -> Result<Self, Error> {
+    pub fn new(peer_id: u64, shared: Shared, config: Config) -> Result<Self, Error> {
         let session_config = ServerSessionConfig::new();
         let (session, results) = ServerSession::new(session_config)
             .map_err(|_| Error::SessionCreationFailed)?;
@@ -179,10 +178,8 @@ impl Handler {
             stream_key
         );
 
-        {
-            if stream_key.is_empty() || !self.config.permitted_stream_keys.contains(&stream_key) {
-                return Err(Error::StreamKeyNotPermitted(stream_key));
-            }
+        if stream_key.is_empty() || self.config.stream_keys.get(&app_name) != Some(&stream_key) {
+            return Err(Error::StreamKeyNotPermitted(stream_key));
         }
 
         log::debug!("Stream key '{}' permitted", stream_key);

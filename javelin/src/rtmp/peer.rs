@@ -11,8 +11,9 @@ use {
         sessions::StreamMetadata,
         time::RtmpTimestamp,
     },
-    crate::{BytesStream, shared::Shared, config::RtmpConfig},
+    crate::{BytesStream, shared::Shared},
     super::{
+        Config,
         event::{
             Handler as EventHandler,
             EventResult,
@@ -53,7 +54,7 @@ pub struct Peer<S>
 impl<S> Peer<S>
     where S: AsyncRead + AsyncWrite
 {
-    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared, config: RtmpConfig) -> Self {
+    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared, config: Config) -> Self {
         let (sender, receiver) = mpsc::unbounded();
         let event_handler = EventHandler::new(id, shared.clone(), config)
             .unwrap_or_else(|_| {

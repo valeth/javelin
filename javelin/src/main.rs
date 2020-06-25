@@ -21,7 +21,8 @@ use {
     anyhow::Result,
     bytes_stream::BytesStream,
     self::{
-        config::{Config, HlsConfig},
+        hls::Config as HlsConfig,
+        config::{load_config, Config},
         shared::Shared,
     },
 };
@@ -32,7 +33,10 @@ fn main() -> Result<()> {
         eprintln!("Failed to initialize logger: {}", why);
     };
 
-    let config = Config::new();
+    let args = args::build();
+    let config_dir = args.value_of("config_dir").unwrap_or_default();
+
+    let config = load_config(config_dir)?;
     let shared = Shared::new();
 
     #[cfg(feature = "web")]

@@ -6,8 +6,8 @@ use {
         sync::{mpsc, oneshot},
     },
     anyhow::Result,
-    super::writer::Writer,
-    crate::{media, shared::Shared, config::HlsConfig},
+    super::{writer::Writer, Config},
+    crate::{media, shared::Shared},
 };
 
 
@@ -20,12 +20,12 @@ pub struct Server {
     sender: Sender,
     receiver: Receiver,
     shared: Shared,
-    config: HlsConfig,
+    config: Config,
 }
 
 
 impl Server {
-    pub fn new(shared: Shared, config: HlsConfig) -> Self {
+    pub fn new(shared: Shared, config: Config) -> Self {
         let (sender, receiver) = mpsc::unbounded();
 
         let hls_root = &config.root_dir;

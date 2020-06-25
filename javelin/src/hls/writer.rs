@@ -12,10 +12,9 @@ use {
         flv,
         mpegts::TransportStream,
     },
-    super::m3u8::Playlist,
+    super::{m3u8::Playlist, Config},
     crate::{
         shared::Shared,
-        config::HlsConfig,
         media::{self, Media}
     },
 };
@@ -35,7 +34,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn create(app_name: String, receiver: media::Receiver, shared: &Shared, config: &HlsConfig) -> Result<Self> {
+    pub fn create(app_name: String, receiver: media::Receiver, shared: &Shared, config: &Config) -> Result<Self> {
         let write_interval = 2000; // milliseconds
         let next_write = write_interval; // milliseconds
 

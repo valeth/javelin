@@ -14,4 +14,5 @@
 /.env*
 /tmp
 /config/**/*.yml
+config.yml
 *.log

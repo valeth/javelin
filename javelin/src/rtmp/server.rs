@@ -9,8 +9,8 @@ use {
         prelude::*,
         net::{TcpListener, TcpStream, tcp::Incoming},
     },
-    super::{Peer, Error},
-    crate::{BytesStream, shared::Shared, config::RtmpConfig},
+    super::{Peer, Error, Config},
+    crate::{BytesStream, shared::Shared},
 };
 
 #[cfg(feature = "tls")]
@@ -27,11 +27,11 @@ pub struct Server {
     shared: Shared,
     listener: Incoming,
     client_id: AtomicUsize,
-    config: RtmpConfig,
+    config: Config,
 }
 
 impl Server {
-    pub fn new(shared: Shared, config: RtmpConfig) -> Self {
+    pub fn new(shared: Shared, config: Config) -> Self {
         let addr = &config.addr;
         let listener = TcpListener::bind(addr).expect("Failed to bind TCP listener");
 
@@ -68,7 +68,7 @@ impl Future for Server {
     }
 }
 
-fn process<S>(id: u64, stream: S, shared: &Shared, config: RtmpConfig)
+fn process<S>(id: u64, stream: S, shared: &Shared, config: Config)
     where S: AsyncRead + AsyncWrite + Send + 'static
 {
     log::info!("New client connection: {}", id);
@@ -94,7 +94,7 @@ fn spawner(id: u64, stream: TcpStream, shared: Shared, config: RtmpConfig) {
 }
 
 #[cfg(feature = "tls")]
-fn spawner(id: u64, stream: TcpStream, shared: Shared, config: RtmpConfig) {
+fn spawner(id: u64, stream: TcpStream, shared: Shared, config: Config) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 
