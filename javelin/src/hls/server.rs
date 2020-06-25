@@ -7,7 +7,7 @@ use {
     },
     anyhow::Result,
     super::writer::Writer,
-    crate::{media, shared::Shared},
+    crate::{media, shared::Shared, config::HlsConfig},
 };
 
 
@@ -20,21 +20,22 @@ pub struct Server {
     sender: Sender,
     receiver: Receiver,
     shared: Shared,
+    config: HlsConfig,
 }
 
 
 impl Server {
-    pub fn new(shared: Shared) -> Self {
+    pub fn new(shared: Shared, config: HlsConfig) -> Self {
         let (sender, receiver) = mpsc::unbounded();
 
-        let hls_root = shared.config.read().hls.root_dir.clone();
+        let hls_root = &config.root_dir;
         log::info!("HLS directory located at '{}'", hls_root.display());
 
         log::debug!("Attempting cleanup of HLS directory");
         directory_cleanup(hls_root).expect("Failed to clean up HLS directory");
         log::info!("HLS directory purged");
 
-        Self { sender, receiver, shared }
+        Self { sender, receiver, shared, config }
     }
 
     pub fn sender(&self) -> Sender {
@@ -51,7 +52,7 @@ impl Future for Server {
             let (sender, receiver) = mpsc::unbounded();
             request.send(sender).unwrap();
 
-            match Writer::create(app_name, receiver, &self.shared) {
+            match Writer::create(app_name, receiver, &self.shared, &self.config) {
                 Ok(writer) => { tokio::spawn(writer); },
                 Err(why) => log::error!("Failed to create writer: {:?}", why),
             }

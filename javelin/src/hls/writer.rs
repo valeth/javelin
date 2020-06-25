@@ -15,6 +15,7 @@ use {
     super::m3u8::Playlist,
     crate::{
         shared::Shared,
+        config::HlsConfig,
         media::{self, Media}
     },
 };
@@ -34,11 +35,11 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn create(app_name: String, receiver: media::Receiver, shared: &Shared) -> Result<Self> {
+    pub fn create(app_name: String, receiver: media::Receiver, shared: &Shared, config: &HlsConfig) -> Result<Self> {
         let write_interval = 2000; // milliseconds
         let next_write = write_interval; // milliseconds
 
-        let hls_root = shared.config.read().hls.root_dir.clone();
+        let hls_root = config.root_dir.clone();
         let stream_path = hls_root.join(app_name);
         let playlist_path = stream_path.join("playlist.m3u8");
 

@@ -13,7 +13,7 @@ use {
     },
     bytes::Bytes,
     crate::{
-        config::RepublishAction,
+        config::{RepublishAction, RtmpConfig},
         shared::Shared,
         media::{Media, Channel},
     },
@@ -41,6 +41,7 @@ pub struct Handler {
     peer_id: u64,
     results: VecDeque<EventResult>,
     shared: Shared,
+    config: RtmpConfig,
     session: ServerSession,
     stream_id: Option<u32>,
     received_video_keyframe: bool,
@@ -50,7 +51,7 @@ pub struct Handler {
 
 impl Handler {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(peer_id: u64, shared: Shared) -> Result<Self, Error> {
+    pub fn new(peer_id: u64, shared: Shared, config: RtmpConfig) -> Result<Self, Error> {
         let session_config = ServerSessionConfig::new();
         let (session, results) = ServerSession::new(session_config)
             .map_err(|_| Error::SessionCreationFailed)?;
@@ -59,6 +60,7 @@ impl Handler {
             peer_id,
             results: VecDeque::new(),
             shared,
+            config,
             session,
             stream_id: None,
             received_video_keyframe: false,
@@ -178,8 +180,7 @@ impl Handler {
         );
 
         {
-            let config = self.shared.config.read();
-            if stream_key.is_empty() || !config.permitted_stream_keys.contains(&stream_key) {
+            if stream_key.is_empty() || !self.config.permitted_stream_keys.contains(&stream_key) {
                 return Err(Error::StreamKeyNotPermitted(stream_key));
             }
         }
@@ -188,10 +189,9 @@ impl Handler {
 
         {
             let mut streams = self.shared.streams.write();
-            let config = self.shared.config.read();
             if let Some(stream) = streams.get_mut(&app_name) {
                 if let Some(publisher) = &stream.publisher {
-                    match config.republish_action {
+                    match self.config.republish_action {
                         RepublishAction::Replace => {
                             log::info!("Another client is already publishing to this app, removing client");
                             let peers = self.shared.peers.write();

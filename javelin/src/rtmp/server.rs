@@ -1,6 +1,5 @@
 use {
     std::{
-        net::SocketAddr,
         io::ErrorKind as IoErrorKind,
         sync::atomic::{AtomicUsize, Ordering},
         time::Duration,
@@ -11,7 +10,7 @@ use {
         net::{TcpListener, TcpStream, tcp::Incoming},
     },
     super::{Peer, Error},
-    crate::{BytesStream, shared::Shared},
+    crate::{BytesStream, shared::Shared, config::RtmpConfig},
 };
 
 #[cfg(feature = "tls")]
@@ -26,21 +25,21 @@ type ClientId = u64;
 
 pub struct Server {
     shared: Shared,
-    _addr: SocketAddr,
     listener: Incoming,
     client_id: AtomicUsize,
+    config: RtmpConfig,
 }
 
 impl Server {
-    pub fn new(shared: Shared) -> Self {
-        let addr = shared.config.read().addr;
-        let listener = TcpListener::bind(&addr).expect("Failed to bind TCP listener");
+    pub fn new(shared: Shared, config: RtmpConfig) -> Self {
+        let addr = &config.addr;
+        let listener = TcpListener::bind(addr).expect("Failed to bind TCP listener");
 
         log::info!("Starting up Javelin RTMP server on {}", addr);
 
         Self {
             shared,
-            _addr: addr,
+            config,
             listener: listener.incoming(),
             client_id: AtomicUsize::default(),
         }
@@ -61,7 +60,7 @@ impl Future for Server {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         while let Some(tcp_stream) = try_ready!(self.listener.poll().map_err(|err| log::error!("{}", err))) {
-            spawner(self.client_id(), tcp_stream, self.shared.clone());
+            spawner(self.client_id(), tcp_stream, self.shared.clone(), self.config.clone());
             self.increment_client_id();
         }
 
@@ -69,13 +68,13 @@ impl Future for Server {
     }
 }
 
-fn process<S>(id: u64, stream: S, shared: &Shared)
+fn process<S>(id: u64, stream: S, shared: &Shared, config: RtmpConfig)
     where S: AsyncRead + AsyncWrite + Send + 'static
 {
     log::info!("New client connection: {}", id);
 
     let bytes_stream = BytesStream::new(stream);
-    let peer = Peer::new(id, bytes_stream, shared.clone())
+    let peer = Peer::new(id, bytes_stream, shared.clone(), config)
         .map_err(|err| {
             match err {
                 Error::Disconnected(e) if e.kind() == IoErrorKind::ConnectionReset => (),
@@ -87,31 +86,29 @@ fn process<S>(id: u64, stream: S, shared: &Shared)
 }
 
 #[cfg(not(feature = "tls"))]
-fn spawner(id: u64, stream: TcpStream, shared: Shared) {
+fn spawner(id: u64, stream: TcpStream, shared: Shared, config: RtmpConfig) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 
-    process(id, stream, &shared);
+    process(id, stream, &shared, config);
 }
 
 #[cfg(feature = "tls")]
-fn spawner(id: u64, stream: TcpStream, shared: Shared) {
-    let config = shared.config.read().clone();
-
+fn spawner(id: u64, stream: TcpStream, shared: Shared, config: RtmpConfig) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 
     if config.tls.enabled {
         let tls_acceptor = {
             let p12 = config.tls.read_cert().unwrap();
-            let password = config.tls.cert_password;
-            let cert = native_tls::Identity::from_pkcs12(&p12, &password).unwrap();
+            let password = &config.tls.cert_password;
+            let cert = native_tls::Identity::from_pkcs12(&p12, password).unwrap();
             TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build().unwrap())
         };
 
         let tls_accept = tls_acceptor.accept(stream)
             .and_then(move |tls_stream| {
-                process(id, tls_stream, &shared);
+                process(id, tls_stream, &shared, config);
                 Ok(())
             })
             .map_err(|err| {
@@ -120,6 +117,6 @@ fn spawner(id: u64, stream: TcpStream, shared: Shared) {
 
         tokio::spawn(tls_accept);
     } else {
-        process(id, stream, &shared);
+        process(id, stream, &shared, config);
     }
 }

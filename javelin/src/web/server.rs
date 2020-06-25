@@ -6,7 +6,10 @@ use {
         api,
         Error as ApiError,
     },
-    crate::Shared,
+    crate::{
+        shared::Shared,
+        config::Config,
+    },
 };
 
 
@@ -21,36 +24,31 @@ macro_rules! json_error_response {
 
 pub struct Server {
     shared: Shared,
+    config: Config,
 }
 
 impl Server {
-    pub fn new(shared: Shared) -> Self {
-        Self { shared }
+    pub fn new(shared: Shared, config: Config) -> Self {
+        Self { shared, config }
     }
 
     pub fn start(&mut self) {
         let shared = self.shared.clone();
-        thread::spawn(|| server(shared));
+        let config = self.config.clone();
+        thread::spawn(|| server(shared, config));
     }
 }
 
 
-fn server(shared: Shared) {
-    let addr = {
-        let config = shared.config.read();
-        config.web.addr
-    };
-
-    let hls_root = {
-        let config = shared.config.read();
-        config.hls.root_dir.clone()
-    };
+fn server(shared: Shared, config: Config) {
+    let addr = config.web.addr;
+    let hls_root = config.hls.root_dir;
 
     let hls_files = warp::path("hls")
         .and(warp::fs::dir(hls_root));
 
     let streams_api = warp::path("api")
-        .and(api(shared.clone()));
+        .and(api(shared));
 
     let routes = hls_files
         .or(streams_api)

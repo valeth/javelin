@@ -11,7 +11,7 @@ use {
         sessions::StreamMetadata,
         time::RtmpTimestamp,
     },
-    crate::{BytesStream, shared::Shared},
+    crate::{BytesStream, shared::Shared, config::RtmpConfig},
     super::{
         event::{
             Handler as EventHandler,
@@ -53,9 +53,9 @@ pub struct Peer<S>
 impl<S> Peer<S>
     where S: AsyncRead + AsyncWrite
 {
-    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared) -> Self {
+    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared, config: RtmpConfig) -> Self {
         let (sender, receiver) = mpsc::unbounded();
-        let event_handler = EventHandler::new(id, shared.clone())
+        let event_handler = EventHandler::new(id, shared.clone(), config)
             .unwrap_or_else(|_| {
                 panic!("Failed to create event handler for peer {}", id)
             });

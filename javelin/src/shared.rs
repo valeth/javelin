@@ -7,7 +7,6 @@ use {
     crate::{
         media::Channel,
         rtmp::peer,
-        config::Config,
     },
 };
 #[cfg(feature = "hls")]
@@ -16,7 +15,6 @@ use crate::hls;
 
 #[derive(Clone)]
 pub struct Shared {
-    pub config: Arc<RwLock<Config>>,
     pub peers: Arc<RwLock<HashMap<u64, peer::Sender>>>,
     pub streams: Arc<RwLock<HashMap<String, Channel>>>,
     #[cfg(feature = "hls")]
@@ -28,7 +26,6 @@ pub struct Shared {
 impl Shared {
     pub fn new() -> Self {
         Self {
-            config: Arc::new(RwLock::new(Config::new())),
             peers: Arc::new(RwLock::new(HashMap::new())),
             streams: Arc::new(RwLock::new(HashMap::new())),
             #[cfg(feature = "hls")]

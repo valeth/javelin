@@ -20,7 +20,10 @@ use {
     futures::future::lazy,
     anyhow::Result,
     bytes_stream::BytesStream,
-    self::shared::Shared,
+    self::{
+        config::{Config, HlsConfig},
+        shared::Shared,
+    },
 };
 
 
@@ -29,16 +32,17 @@ fn main() -> Result<()> {
         eprintln!("Failed to initialize logger: {}", why);
     };
 
+    let config = Config::new();
     let shared = Shared::new();
 
     #[cfg(feature = "web")]
-    spawn_web_server(shared.clone());
+    spawn_web_server(shared.clone(), config.clone());
 
     tokio::run(lazy(move || {
         #[cfg(feature = "hls")]
-        spawn_hls_server(shared.clone());
+        spawn_hls_server(shared.clone(), config.hls.clone());
 
-        tokio::spawn(rtmp::Server::new(shared.clone()));
+        tokio::spawn(rtmp::Server::new(shared.clone(), config.rtmp.clone()));
 
         Ok(())
     }));
@@ -90,14 +94,9 @@ fn init_logger() -> Result<()> {
 }
 
 #[cfg(feature = "hls")]
-fn spawn_hls_server(mut shared: Shared) {
-    let enabled = {
-        let config = shared.config.read();
-        config.hls.enabled
-    };
-
-    if enabled {
-        let hls_server = hls::Server::new(shared.clone());
+fn spawn_hls_server(mut shared: Shared, config: HlsConfig) {
+    if config.enabled {
+        let hls_server = hls::Server::new(shared.clone(), config);
         let hls_sender = hls_server.sender();
         let file_cleaner = hls::file_cleaner::FileCleaner::new(shared.clone());
         shared.set_hls_sender(hls_sender);
@@ -107,13 +106,10 @@ fn spawn_hls_server(mut shared: Shared) {
 }
 
 #[cfg(feature = "web")]
-fn spawn_web_server(shared: Shared) {
-    let enabled = {
-        let config = shared.config.read();
-        config.hls.enabled && config.web.enabled
-    };
+fn spawn_web_server(shared: Shared, config: Config) {
+    let enabled = config.hls.enabled && config.web.enabled;
 
     if enabled {
-        web::Server::new(shared).start();
+        web::Server::new(shared, config).start();
     }
 }
