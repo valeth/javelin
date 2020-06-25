@@ -5,6 +5,8 @@ use {
             ServerSessionResult,
             ServerSessionEvent as Event,
             StreamMetadata,
+            ServerSession,
+            ServerSessionConfig,
         },
         chunk_io::Packet,
         time::RtmpTimestamp
@@ -35,6 +37,7 @@ pub struct Handler {
     peer_id: u64,
     results: VecDeque<EventResult>,
     shared: Shared,
+    session: ServerSession,
     #[cfg(feature = "hls")]
     media_sender: Option<media::Sender>,
 }
@@ -42,17 +45,21 @@ pub struct Handler {
 impl Handler {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(peer_id: u64, shared: Shared) -> Result<Self, Error> {
-        let results = {
+        {
             let mut clients = shared.clients.lock();
-            let (client, results) = Client::new(peer_id, shared.clone())?;
+            let client = Client::new(peer_id, shared.clone());
             clients.insert(peer_id, client);
-            results
-        };
+        }
+
+        let session_config = ServerSessionConfig::new();
+        let (session, results) = ServerSession::new(session_config)
+            .map_err(|_| Error::SessionCreationFailed)?;
 
         let mut this = Self {
             peer_id,
             results: VecDeque::new(),
             shared,
+            session,
             #[cfg(feature = "hls")]
             media_sender: None,
         };
@@ -63,11 +70,8 @@ impl Handler {
     }
 
     pub fn handle(&mut self, bytes: &[u8]) -> Result<Vec<EventResult>, Error> {
-        let results = {
-            let mut clients = self.shared.clients.lock();
-            let client = clients.get_mut(&self.peer_id).unwrap();
-            client.session.handle_input(bytes).map_err(|_| Error::InvalidInput)?
-        };
+        let results = self.session.handle_input(bytes)
+            .map_err(|_| Error::InvalidInput)?;
 
         self.handle_server_session_results(results)?;
 
@@ -134,11 +138,8 @@ impl Handler {
             return Err(Error::ApplicationNameRequired);
         }
 
-        let results = {
-            let mut clients = self.shared.clients.lock();
-            let client = clients.get_mut(&self.peer_id).unwrap();
-            client.accept_request(request_id)?
-        };
+        let results = self.session.accept_request(request_id)
+            .map_err(|_| Error::RequestNotAccepted(request_id))?;
 
         self.handle_server_session_results(results)?;
 
@@ -187,22 +188,21 @@ impl Handler {
         #[cfg(feature = "hls")]
         self.register_on_hls_server(app_name.clone());
 
-        let result = {
+        {
             let mut clients = self.shared.clients.lock();
             let client = clients.get_mut(&self.peer_id).unwrap();
             let mut streams = self.shared.streams.write();
             let mut stream = streams.entry(app_name.clone()).or_insert_with(Channel::new);
             client.publish(&mut stream, app_name.clone(), stream_key.clone());
-            client.accept_request(request_id)
-        };
-
-        match result {
-            Err(why) => {
-                log::error!("Error while accepting publishing request: {:?}", why);
-                return Err(Error::PublishRequestFailed);
-            },
-            Ok(results) => self.handle_server_session_results(results)?
         }
+
+        let results = self.session.accept_request(request_id)
+            .map_err(|why| {
+                log::error!("Error while accepting publishing request: {:?}", why);
+                Error::PublishRequestFailed
+            })?;
+
+        self.handle_server_session_results(results)?;
 
         Ok(())
     }
@@ -225,37 +225,43 @@ impl Handler {
     fn play_requested(&mut self, request_id: u32, app_name: &str, stream_id: u32) -> Result<(), Error> {
         log::info!("Client {} requested playback of app '{}'", self.peer_id, app_name);
 
-        let results = {
+        {
             let mut clients = self.shared.clients.lock();
             if let Some(client) = clients.get_mut(&self.peer_id) {
                 let mut streams = self.shared.streams.write();
                 let mut stream = streams.entry(app_name.to_string()).or_insert_with(Channel::new);
                 client.watch(&mut stream, stream_id, app_name.to_string());
-                client.accept_request(request_id)?
-            } else {
-                vec![]
             }
-        };
+        }
+
+        let results = self
+            .session
+            .accept_request(request_id)
+            .map_err(|_| Error::RequestNotAccepted(request_id))?;
 
         {
-            let mut clients = self.shared.clients.lock();
-            let client = clients.get_mut(&self.peer_id).unwrap();
             let streams = self.shared.streams.read();
 
             if let Some(ref metadata) = streams.get(app_name).unwrap().metadata {
-                let packet = client.session.send_metadata(stream_id, Rc::new(metadata.clone()))
+                let packet = self
+                    .session
+                    .send_metadata(stream_id, Rc::new(metadata.clone()))
                     .map_err(|_| Error::DataPreparationFailed("metadata"))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
             if let Some(ref v_seq_h) = streams.get(app_name).unwrap().video_seq_header {
-                let packet = client.session.send_video_data(stream_id, v_seq_h.clone(), RtmpTimestamp::new(0), false)
+                let packet = self
+                    .session
+                    .send_video_data(stream_id, v_seq_h.clone(), RtmpTimestamp::new(0), false)
                     .map_err(|_| Error::DataPreparationFailed("video data"))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
 
             if let Some(ref a_seq_h) = streams.get(app_name).unwrap().audio_seq_header {
-                let packet = client.session.send_audio_data(stream_id, a_seq_h.clone(), RtmpTimestamp::new(0), false)
+                let packet = self
+                    .session
+                    .send_audio_data(stream_id, a_seq_h.clone(), RtmpTimestamp::new(0), false)
                     .map_err(|_| Error::DataPreparationFailed("audio data"))?;
                 self.results.push_back(EventResult::Outbound(self.peer_id, packet));
             }
@@ -278,7 +284,8 @@ impl Handler {
                 let client = clients.get_mut(client_id).unwrap();
 
                 if let Some(watched_stream) = client.watched_stream() {
-                    let packet = client.session
+                    let packet = self
+                        .session
                         .send_metadata(watched_stream, Rc::new(metadata.clone()))
                         .map_err(|_| Error::DataPreparationFailed("metadata"))?;
 
@@ -323,7 +330,7 @@ impl Handler {
                 if let Some(active_stream) = client.watched_stream() {
                     let packet = match &media {
                         Media::AAC(timestamp, bytes) => {
-                            client.session
+                            self.session
                                 .send_audio_data(active_stream, bytes.clone(), timestamp.clone(), true)
                                 .map_err(|_| Error::DataPreparationFailed("audio data"))?
                         }
@@ -331,7 +338,7 @@ impl Handler {
                             if media.is_keyframe() {
                                 client.received_video_keyframe = true;
                             }
-                            client.session
+                            self.session
                                 .send_video_data(active_stream, bytes.clone(), timestamp.clone(), true)
                                 .map_err(|_| Error::DataPreparationFailed("video data"))?
                         },

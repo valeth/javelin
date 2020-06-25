@@ -1,10 +1,4 @@
 use {
-    rml_rtmp::sessions::{
-        ServerSession,
-        ServerSessionConfig,
-        ServerSessionResult
-    },
-    super::Error,
     crate::{
         media::Channel,
         shared::Shared,
@@ -25,30 +19,17 @@ pub struct Client {
     peer_id: u64,
     state: ClientState,
     shared: Shared,
-    pub session: ServerSession,
     pub received_video_keyframe: bool,
 }
 
 impl Client {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(peer_id: u64, shared: Shared) -> Result<(Self, Vec<ServerSessionResult>), Error> {
-        let session_config = ServerSessionConfig::new();
-        let (session, results) = ServerSession::new(session_config)
-            .map_err(|_| Error::SessionCreationFailed)?;
-
-        let this = Self {
+    pub fn new(peer_id: u64, shared: Shared) -> Self {
+        Self {
             peer_id,
             shared,
-            session,
             state: ClientState::Waiting,
             received_video_keyframe: false,
-        };
-
-        Ok((this, results))
-    }
-
-    pub fn accept_request(&mut self, request_id: u32) -> Result<Vec<ServerSessionResult>, Error> {
-        self.session.accept_request(request_id).map_err(|_| Error::RequestNotAccepted(request_id))
+        }
     }
 
     pub fn publish(&mut self, channel: &mut Channel, app_name: String, stream_key: String) {
