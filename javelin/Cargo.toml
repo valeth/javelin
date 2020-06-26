@@ -7,20 +7,18 @@ categories = ["multimedia", "multimedia::audio", "multimedia::video"]
 license = "GPL-3.0"
 readme = "README.md"
 repository = "https://gitlab.com/valeth/javelin.git"
-version = "0.3.6"
+version = "0.4.0-dev.1"
 edition = "2018"
 
+
 [dependencies]
-bytes = "^0.4"
+bytes = "^0.5"
 parking_lot = "^0.7"
 futures = "^0.1"
 rml_rtmp = "^0.2"
-serde_json = "^1.0"
 serde_yaml = "^0.8"
-byteorder = "1.3.4"
 anyhow = "^1.0"
 thiserror = "^1.0"
-
 
 [dependencies.serde]
 version = "^1.0"
@@ -71,10 +69,19 @@ version = "0.1"
 optional = true
 version = "^1.0"
 
+[dependencies.javelin-types]
+version = "0.4.0"
+path = "../javelin-types"
+
 [dependencies.javelin-codec]
 optional = true
 version = "0.4.0"
 path = "../javelin-codec"
+
+[dependencies.javelin-rtmp]
+version = "0.4.0"
+path = "../javelin-rtmp"
+
 
 [features]
 default = ["tls", "hls", "web"]

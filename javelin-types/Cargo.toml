@@ -1,0 +1,19 @@
+[package]
+name = "javelin-types"
+version = "0.4.0"
+authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
+license = "GPL-3.0"
+edition = "2018"
+
+
+[dependencies]
+serde = "^1.0"
+bincode = "^1.3"
+
+[dependencies.bytes]
+version = "^0.5"
+features = ["serde"]
+
+
+[lib]
+crate-type = ["dylib", "rlib"]

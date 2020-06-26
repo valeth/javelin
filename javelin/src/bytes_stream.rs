@@ -1,7 +1,7 @@
 use {
     tokio::{prelude::*, io},
     futures::try_ready,
-    bytes::{Bytes, BytesMut, BufMut},
+    bytes::{Bytes, BytesMut, Buf, BufMut},
 };
 
 
@@ -43,7 +43,9 @@ impl<S> BytesStream<S>
     fn fill_read_buffer(&mut self) -> Poll<(), io::Error> {
         loop {
             self.buf_in.reserve(4096);
-            let bytes_read = try_ready!(self.socket.read_buf(&mut self.buf_in));
+            let mut reader = Vec::new(); // temporarily using Vec to avoid Bytes incompat
+            let bytes_read = try_ready!(self.socket.read_buf(&mut reader));
+            self.buf_in.extend(reader);
 
             if bytes_read == 0 {
                 return Ok(Async::Ready(()));
@@ -61,9 +63,9 @@ impl<S> Stream for BytesStream<S>
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         let is_socket_closed = self.fill_read_buffer()?.is_ready();
 
-        let data = self.buf_in.take();
+        let data = self.buf_in.to_bytes();
         if !data.is_empty() {
-            return Ok(Async::Ready(Some(data.freeze())))
+            return Ok(Async::Ready(Some(data)))
         }
 
         if is_socket_closed {

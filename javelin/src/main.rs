@@ -8,6 +8,7 @@ mod config;
 mod media;
 mod rtmp;
 mod args;
+mod session;
 
 #[cfg(feature = "hls")]
 mod hls;
@@ -64,8 +65,9 @@ fn init_logger() -> Result<()> {
     let colors = ColoredLevelConfig::default();
     Dispatch::new()
         .level(LevelFilter::Error)
-        .level_for("javelin", LevelFilter::Warn)
+        .level_for("javelin", LevelFilter::Debug)
         .level_for("javelin::rtmp", LevelFilter::Debug)
+        .level_for("javelin-rtmp", LevelFilter::Debug)
         .level_for("javelin-codec", LevelFilter::Warn)
         .chain(Dispatch::new()
             .format(|out, msg, record| {

@@ -5,8 +5,7 @@ use {
     },
     parking_lot::RwLock,
     crate::{
-        media::Channel,
-        rtmp::peer,
+        session,
     },
 };
 #[cfg(feature = "hls")]
@@ -15,8 +14,7 @@ use crate::hls;
 
 #[derive(Clone)]
 pub struct Shared {
-    pub peers: Arc<RwLock<HashMap<u64, peer::Sender>>>,
-    pub streams: Arc<RwLock<HashMap<String, Channel>>>,
+    pub streams: Arc<RwLock<HashMap<String, session::Session>>>,
     #[cfg(feature = "hls")]
     hls_sender: Arc<RwLock<Option<hls::server::Sender>>>,
     #[cfg(feature = "hls")]
@@ -26,7 +24,6 @@ pub struct Shared {
 impl Shared {
     pub fn new() -> Self {
         Self {
-            peers: Arc::new(RwLock::new(HashMap::new())),
             streams: Arc::new(RwLock::new(HashMap::new())),
             #[cfg(feature = "hls")]
             hls_sender: Arc::new(RwLock::new(None)),

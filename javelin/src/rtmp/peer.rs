@@ -1,38 +1,19 @@
 use {
-    futures::{sync::mpsc, try_ready},
+    std::convert::TryFrom,
+    futures::try_ready,
     tokio::prelude::*,
-    bytes::{Bytes, BytesMut, BufMut},
-    rml_rtmp::{
-        handshake::{
-            Handshake as RtmpHandshake,
-            HandshakeProcessResult,
-            PeerType,
-        },
-        sessions::StreamMetadata,
-        time::RtmpTimestamp,
+    javelin_rtmp::{Protocol, Event},
+    javelin_types::{Packet, PacketType, Metadata},
+    crate::{
+        BytesStream,
+        shared::Shared,
+        session::{self, Message, Sender, Receiver, Session},
     },
-    crate::{BytesStream, shared::Shared},
     super::{
         Config,
-        event::{
-            Handler as EventHandler,
-            EventResult,
-        },
         error::Error,
     },
 };
-
-
-pub enum Message {
-    Raw(Bytes),
-    Metadata(StreamMetadata),
-    VideoData(RtmpTimestamp, Bytes),
-    AudioData(RtmpTimestamp, Bytes),
-    Disconnect,
-}
-
-pub type Sender = mpsc::UnboundedSender<Message>;
-type Receiver = mpsc::UnboundedReceiver<Message>;
 
 
 /// Represents an incoming connection
@@ -41,132 +22,53 @@ pub struct Peer<S>
 {
     id: u64,
     bytes_stream: BytesStream<S>,
-    sender: Sender,
-    receiver: Receiver,
+    session_receiver: Receiver,
+    session_sender: Sender,
     shared: Shared,
-    buffer: BytesMut,
-    event_handler: EventHandler,
+    proto: Protocol,
+    config: Config,
+    app_name: Option<String>,
     disconnecting: bool,
-    handshake_completed: bool,
-    handshake: RtmpHandshake,
 }
 
 impl<S> Peer<S>
     where S: AsyncRead + AsyncWrite
 {
     pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared, config: Config) -> Self {
-        let (sender, receiver) = mpsc::unbounded();
-        let event_handler = EventHandler::new(id, shared.clone(), config)
-            .unwrap_or_else(|_| {
-                panic!("Failed to create event handler for peer {}", id)
-            });
-
-        {
-            let mut peers = shared.peers.write();
-            peers.insert(id, sender.clone());
-        }
+        let (session_sender, session_receiver) = session::channel();
 
         Self {
             id,
             bytes_stream,
-            sender,
-            receiver,
+            session_receiver,
+            session_sender,
             shared,
-            buffer: BytesMut::with_capacity(4096),
-            event_handler,
-            handshake_completed: false,
+            proto: Protocol::new(),
+            config,
+            app_name: None,
             disconnecting: false,
-            handshake: RtmpHandshake::new(PeerType::Server),
         }
-    }
-
-    fn handle_handshake(&mut self) -> Poll<(), Error> {
-        use self::HandshakeProcessResult as HandshakeState;
-
-        let data = self.buffer.take().freeze();
-
-        let response_bytes = match self.handshake.process_bytes(&data) {
-            Err(why) => {
-                log::error!("Handshake for peer {} failed: {}", self.id, why);
-                return Err(Error::HandshakeFailed);
-            },
-            Ok(HandshakeState::InProgress { response_bytes }) => {
-                log::debug!("Handshake pending...");
-                response_bytes
-            },
-            Ok(HandshakeState::Completed { response_bytes, remaining_bytes }) => {
-                log::info!("Handshake for client {} successful", self.id);
-                log::debug!("Remaining bytes after handshake: {}", remaining_bytes.len());
-                self.handshake_completed = true;
-
-                if !remaining_bytes.is_empty() {
-                    self.buffer.reserve(remaining_bytes.len());
-                    self.buffer.put(remaining_bytes);
-                    self.handle_incoming_bytes()?;
-                }
-
-                response_bytes
-            }
-        };
-
-        if !response_bytes.is_empty() {
-            self.sender
-                .unbounded_send(Message::Raw(Bytes::from(response_bytes)))
-                .map_err(|_| Error::HandshakeFailed)?
-        }
-
-        Ok(Async::Ready(()))
-    }
-
-    fn handle_incoming_bytes(&mut self) -> Result<(), Error> {
-        let data = self.buffer.take();
-
-        let event_results = self.event_handler.handle(&data)?;
-
-        for result in event_results {
-            match result {
-                EventResult::Outbound(target_peer_id, packet) => {
-                    let message = Message::Raw(Bytes::from(packet.bytes));
-                    self.send_to_peer(target_peer_id, message);
-                },
-                EventResult::Metadata(target_peer_id, metadata) => {
-                    let message = Message::Metadata(metadata.clone());
-                    self.send_to_peer(target_peer_id, message);
-                },
-                EventResult::VideoData(target_peer_id, timestamp, payload) => {
-                    let message = Message::VideoData(timestamp.clone(), payload.clone());
-                    self.send_to_peer(target_peer_id, message);
-                },
-                EventResult::AudioData(target_peer_id, timestamp, payload) => {
-                    let message = Message::AudioData(timestamp.clone(), payload.clone());
-                    self.send_to_peer(target_peer_id, message);
-                },
-                EventResult::Disconnect => {
-                    self.disconnecting = true;
-                    break;
-                }
-            }
-        }
-
-        Ok(())
     }
 
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
         match message {
-            Message::Raw(val) => {
-                self.bytes_stream.fill_write_buffer(&val);
-            },
-            Message::Metadata(metadata) => {
-                let packet = self.event_handler.pack_metadata(metadata)?;
-                self.bytes_stream.fill_write_buffer(&packet.bytes);
-            },
-            Message::VideoData(timestamp, payload) => {
-                let packet = self.event_handler.pack_video(timestamp, payload)?;
-                self.bytes_stream.fill_write_buffer(&packet.bytes);
-            },
-            Message::AudioData(timestamp, payload) => {
-                let packet = self.event_handler.pack_audio(timestamp, payload)?;
-                self.bytes_stream.fill_write_buffer(&packet.bytes);
+            Message::Packet(packet) => {
+                log::debug!("Peer {}: received {:?}", self.id, packet.kind);
+                match packet.kind  {
+                    PacketType::Meta => {
+                        let metadata = Metadata::try_from(packet).unwrap();
+                        let bytes= self.proto.pack_metadata(metadata).unwrap();
+                        self.bytes_stream.fill_write_buffer(&bytes);
+                    },
+                    PacketType::Video => {
+                        let bytes = self.proto.pack_video(packet).unwrap();
+                        self.bytes_stream.fill_write_buffer(&bytes);
+                    },
+                    PacketType::Audio => {
+                        let bytes = self.proto.pack_audio(packet).unwrap();
+                        self.bytes_stream.fill_write_buffer(&bytes);
+                    },
+                }
             },
             Message::Disconnect => {
                 self.disconnecting = true;
@@ -176,12 +78,80 @@ impl<S> Peer<S>
         Ok(())
     }
 
-    fn send_to_peer(&self, peer_id: u64, message: Message) {
-        let peers = self.shared.peers.read();
-        if let Some(peer) = peers.get(&peer_id) {
-            if let Err(why) = peer.unbounded_send(message) {
-                log::error!("Failed to send message to peer {}: {}", peer_id, why);
+    fn handle_event(&mut self, event: Event) -> Result<(), Error> {
+        match event {
+            Event::ReturnData(data) => {
+                self.bytes_stream.fill_write_buffer(data.as_ref());
+            },
+            Event::SendPacket(packet) => {
+                let app_name = self.app_name.as_ref().unwrap();
+                let mut streams = self.shared.streams.write();
+                let stream = streams
+                    .get_mut(app_name)
+                    .ok_or_else(|| Error::NoSuchStream(app_name.clone()))?;
+                stream.set_cache(packet.clone()).unwrap();
+                stream.send_to_watchers(Message::Packet(packet));
+            },
+            Event::AcquireSession { app_name, stream_key } => {
+                self.authenticate(&app_name, &stream_key)?;
+                self.app_name = Some(app_name.clone());
+                let mut streams = self.shared.streams.write();
+                streams.remove(&app_name);
+                streams.insert(app_name, Session::new());
+            },
+            Event::JoinSession { app_name, .. } => {
+                let mut streams = self.shared.streams.write();
+                let stream = streams
+                    .get_mut(&app_name)
+                    .ok_or_else(|| Error::NoSuchStream(app_name))?;
+                stream.add_watcher(self.session_sender.clone());
+            },
+            Event::SendInitData { app_name } => {
+                let streams = self.shared.streams.read();
+                let stream = streams
+                    .get(&app_name)
+                    .ok_or_else(|| Error::NoSuchStream(app_name))?;
+
+                if let Some(metadata) = &stream.metadata {
+                    let packet = Packet::try_from(metadata.clone()).unwrap();
+                    self.send_back(Message::Packet(packet));
+                }
+
+                if let Some(audio_header) = &stream.audio_seq_header {
+                    let packet = Packet::new_audio(0, audio_header.clone());
+                    self.send_back(Message::Packet(packet));
+                }
+
+                if let Some(video_header) = &stream.video_seq_header {
+                    let packet = Packet::new_video(0, video_header.clone());
+                    self.send_back(Message::Packet(packet));
+                }
             }
+            Event::ReleaseSession => {
+                let app_name = self.app_name.as_ref().unwrap();
+                let mut streams = self.shared.streams.write();
+                streams.remove(app_name);
+                self.send_back(Message::Disconnect);
+            }
+            Event::LeaveSession => {
+                self.send_back(Message::Disconnect);
+            },
+        }
+
+        Ok(())
+    }
+
+    fn authenticate(&self, app: &String, key: &String) -> Result<(), Error> {
+        if key.is_empty() || self.config.stream_keys.get(app) != Some(key) {
+            return Err(Error::StreamKeyNotPermitted(key.clone()));
+        }
+
+        Ok(())
+    }
+
+    fn send_back(&self, message: Message) {
+        if let Err(why) = self.session_sender.unbounded_send(message) {
+            log::error!("Failed to send message back to peer {}: {}", self.id, why);
         }
     }
 }
@@ -190,10 +160,7 @@ impl<S> Drop for Peer<S>
     where S: AsyncRead + AsyncWrite
 {
     fn drop(&mut self) {
-        let mut peers = self.shared.peers.write();
-        peers.remove(&self.id);
-
-        log::info!("Closing connection: {}", self.id);
+        log::info!("Client {} disconnected", self.id);
     }
 }
 
@@ -204,24 +171,20 @@ impl<S> Future for Peer<S>
     type Error = Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        while let Async::Ready(Some(msg)) = self.receiver.poll().unwrap() {
+        while let Async::Ready(Some(msg)) = self.session_receiver.poll().unwrap() {
             self.handle_message(msg)?;
-            if self.disconnecting {
-                break;
-            }
+            self.bytes_stream.poll_flush()?;
         }
 
-        let _ = self.bytes_stream.poll_flush()?;
+        if self.disconnecting {
+            return Ok(Async::Ready(()));
+        }
 
         match try_ready!(self.bytes_stream.poll()) {
             Some(data) => {
-                self.buffer.reserve(data.len());
-                self.buffer.put(data);
-
-                if self.handshake_completed {
-                    self.handle_incoming_bytes()?;
-                } else {
-                    try_ready!(self.handle_handshake());
+                for event in self.proto.handle_bytes(&data).unwrap() {
+                    self.handle_event(event)?;
+                    self.bytes_stream.poll_flush()?;
                 }
             },
             None => {
@@ -229,10 +192,6 @@ impl<S> Future for Peer<S>
             },
         }
 
-        if self.disconnecting {
-            Ok(Async::Ready(()))
-        } else {
-            Ok(Async::NotReady)
-        }
+        Ok(Async::NotReady)
     }
 }

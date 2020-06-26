@@ -40,13 +40,7 @@ fn active_streams(shared: Shared) -> BoxedFilter<(impl Reply,)> {
         .map(move || {
             let streams = shared.streams.read();
             let active = streams.iter()
-                .filter_map(|(k, v)| {
-                    if v.has_publisher() {
-                        Some(k.clone())
-                    } else {
-                        None
-                    }
-                })
+                .map(|(k, _)| k.clone())
                 .collect::<Vec<String>>();
 
             let json = json!({
@@ -67,17 +61,17 @@ fn stream_stats(shared: Shared) -> BoxedFilter<(impl Reply,)> {
                     let metadata = stream.metadata.clone()
                         .map(|m| json!({
                             "video": {
-                                "codec": m.video_codec,
-                                "bitrate": m.video_bitrate_kbps,
-                                "framerate": m.video_frame_rate,
-                                "width": m.video_width,
-                                "height": m.video_height
+                                "codec": m.get::<String, _>("video.codec"),
+                                "bitrate": m.get::<u32, _>("video.bitrate"),
+                                "framerate": m.get::<u32, _>("video.frame_rate"),
+                                "width": m.get::<u32, _>("video.width"),
+                                "height": m.get::<u32, _>("video.height")
                             },
                             "audio": {
-                                "codec": m.audio_codec,
-                                "bitrate": m.audio_bitrate_kbps,
-                                "sample_rate": m.audio_sample_rate,
-                                "channels": m.audio_channels
+                                "codec": m.get::<String, _>("audio.codec"),
+                                "bitrate": m.get::<u32, _>("audio.bitrate_kbps"),
+                                "sample_rate": m.get::<u32, _>("audio.sample_rate"),
+                                "channels": m.get::<u8, _>("audio.channels")
                             }
                         }));
 

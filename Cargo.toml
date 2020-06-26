@@ -2,9 +2,11 @@
 members = [
     "./javelin",
     "./javelin-codec",
+    "./javelin-types",
+    "./javelin-rtmp",
 ]
 
 
 [profile.release]
 opt-level = 3
-lto = true
+lto = false # some linking errors with lto = true

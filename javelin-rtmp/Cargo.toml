@@ -1,0 +1,21 @@
+[package]
+name = "javelin-rtmp"
+version = "0.4.0"
+authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
+license = "GPL-3.0"
+edition = "2018"
+
+
+[dependencies]
+bytes = "^0.5"
+rml_rtmp = "^0.3"
+thiserror = "^1.0"
+log = "^0.4"
+
+[dependencies.javelin-types]
+version = "^0.4"
+path = "../javelin-types"
+
+
+[lib]
+crate-type = ["dylib", "rlib"]
