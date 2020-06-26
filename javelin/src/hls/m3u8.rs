@@ -4,7 +4,6 @@ use {
     tempfile::NamedTempFile,
     anyhow::Result,
     super::file_cleaner,
-    crate::shared::Shared,
 };
 
 #[cfg(unix)]
@@ -23,15 +22,13 @@ impl Playlist {
     const DEFAULT_TARGET_DURATION: f32 = 6.0;
     const PLAYLIST_CACHE_DURATION: u64 = 30000; // milliseconds
 
-    pub fn new<P>(path: P, shared: &Shared) -> Self
+    pub fn new<P>(path: P, file_cleaner: file_cleaner::Sender) -> Self
         where P: Into<PathBuf>
     {
         let mut playlist = MediaPlaylist::default();
         playlist.version = 3;
         playlist.target_duration = Self::DEFAULT_TARGET_DURATION;
         playlist.media_sequence = 0;
-
-        let file_cleaner = shared.fcleaner_sender().expect("Missing file cleaner sender");
 
         Self {
             file_path: path.into(),

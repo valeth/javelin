@@ -6,7 +6,6 @@ use {
     },
     futures::sync::mpsc::{self, UnboundedSender, UnboundedReceiver},
     tokio::{prelude::*, timer::DelayQueue},
-    crate::shared::Shared,
 };
 
 
@@ -18,19 +17,23 @@ type Receiver = UnboundedReceiver<Message>;
 
 pub struct FileCleaner {
     items: DelayQueue<Batch>,
+    sender: Sender,
     receiver: Receiver,
 }
 
 impl FileCleaner {
-    pub fn new(mut shared: Shared) -> Self {
+    pub fn new() -> Self {
         let (sender, receiver) = mpsc::unbounded();
-
-        shared.set_fcleaner_sender(sender);
 
         Self {
             items: DelayQueue::new(),
+            sender,
             receiver,
         }
+    }
+
+    pub fn sender(&self) -> Sender {
+        self.sender.clone()
     }
 
     fn get_new(&mut self) {

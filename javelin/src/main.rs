@@ -22,7 +22,6 @@ use {
     anyhow::Result,
     bytes_stream::BytesStream,
     self::{
-        hls::Config as HlsConfig,
         config::{load_config, Config},
         shared::Shared,
     },
@@ -45,7 +44,7 @@ fn main() -> Result<()> {
 
     tokio::run(lazy(move || {
         #[cfg(feature = "hls")]
-        spawn_hls_server(shared.clone(), config.hls.clone());
+        tokio::spawn(hls::Service::new(config.hls.clone()));
 
         tokio::spawn(rtmp::Server::new(shared.clone(), config.rtmp.clone()));
 
@@ -97,18 +96,6 @@ fn init_logger() -> Result<()> {
         .apply()?;
 
     Ok(())
-}
-
-#[cfg(feature = "hls")]
-fn spawn_hls_server(mut shared: Shared, config: HlsConfig) {
-    if config.enabled {
-        let hls_server = hls::Server::new(shared.clone(), config);
-        let hls_sender = hls_server.sender();
-        let file_cleaner = hls::file_cleaner::FileCleaner::new(shared.clone());
-        shared.set_hls_sender(hls_sender);
-        tokio::spawn(hls_server);
-        tokio::spawn(file_cleaner);
-    }
 }
 
 #[cfg(feature = "web")]

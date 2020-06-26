@@ -1,5 +1,9 @@
 use {
-    std::{path::PathBuf, fs, convert::TryFrom},
+    std::{
+        convert::TryFrom,
+        path::{Path, PathBuf},
+        fs,
+    },
     futures::try_ready,
     tokio::prelude::*,
     chrono::Utc,
@@ -12,11 +16,12 @@ use {
         flv,
         mpegts::TransportStream,
     },
-    super::{m3u8::Playlist, Config},
-    crate::{
-        shared::Shared,
-        media::{self, Media}
+    super::{
+        file_cleaner,
+        m3u8::Playlist,
+        Config,
     },
+    crate::media::{self, Media},
 };
 
 
@@ -34,7 +39,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn create(app_name: String, receiver: media::Receiver, shared: &Shared, config: &Config) -> Result<Self> {
+    pub fn create(app_name: String, receiver: media::Receiver, fcleaner_sender: file_cleaner::Sender, config: &Config) -> Result<Self> {
         let write_interval = 2000; // milliseconds
         let next_write = write_interval; // milliseconds
 
@@ -42,12 +47,7 @@ impl Writer {
         let stream_path = hls_root.join(app_name);
         let playlist_path = stream_path.join("playlist.m3u8");
 
-        if stream_path.exists() && !stream_path.is_dir() {
-            bail!("Path '{}' exists, but is not a directory", stream_path.display());
-        }
-
-        log::debug!("Creating HLS directory at '{}'", stream_path.display());
-        fs::create_dir_all(&stream_path)?;
+        prepare_stream_directory(&stream_path)?;
 
         Ok(Self {
             receiver,
@@ -56,7 +56,7 @@ impl Writer {
             last_keyframe: 0,
             keyframe_counter: 0,
             buffer: TransportStream::new(),
-            playlist: Playlist::new(playlist_path, shared),
+            playlist: Playlist::new(playlist_path, fcleaner_sender),
             avc_coder: AvcCoder::new(),
             aac_coder: AacCoder::new(),
             stream_path,
@@ -159,4 +159,17 @@ impl Future for Writer {
 
         Ok(Async::Ready(()))
     }
+}
+
+fn prepare_stream_directory<P: AsRef<Path>>(path: P) -> Result<()> {
+    let stream_path = path.as_ref();
+
+    if stream_path.exists() && !stream_path.is_dir() {
+        bail!("Path '{}' exists, but is not a directory", stream_path.display());
+    }
+
+    log::debug!("Creating HLS directory at '{}'", stream_path.display());
+    fs::create_dir_all(&stream_path)?;
+
+    Ok(())
 }
