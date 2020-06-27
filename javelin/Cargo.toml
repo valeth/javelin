@@ -13,74 +13,41 @@ edition = "2018"
 
 [dependencies]
 bytes = "^0.5"
-parking_lot = "^0.7"
+parking_lot = "^0.11"
 futures = "^0.1"
-rml_rtmp = "^0.2"
+rml_rtmp = "^0.3"
 serde_yaml = "^0.8"
 anyhow = "^1.0"
 thiserror = "^1.0"
-
-[dependencies.serde]
-version = "^1.0"
-features = ["derive"]
-
-[dependencies.fern]
-version = "^0.6"
-features = ["colored"]
-
-[dependencies.clap]
-version = "~2.33"
-features = ["wrap_help"]
-
-[dependencies.chrono]
-version = "^0.4"
-features = ["serde"]
-
-[dependencies.log]
-version = "^0.4"
-features = ["max_level_debug", "release_max_level_info"]
+serde = { version = "^1.0", features = ["derive"] }
+log = { version = "^0.4", features = ["max_level_debug", "release_max_level_info"] }
+fern = { version = "^0.6", features = ["colored"] }
+clap = { version = "~2.33", features = ["wrap_help"] }
+chrono = { version = "^0.4", features = ["serde"] }
+native-tls = { version = "0.2", optional = true }
+tokio-tls = { version = "0.2", optional = true }
+m3u8-rs = { version = "1.0", optional = true }
+tempfile = { version = "3.0", optional = true }
+warp = { version = "0.1", optional = true }
+serde_json = { version = "^1.0", optional = true }
 
 [dependencies.tokio]
 version = "^0.1"
 default-features = false
 features = ["rt-full", "io", "timer", "tcp"]
 
-[dependencies.native-tls]
-optional = true
-version = "0.2"
-
-[dependencies.tokio-tls]
-optional = true
-version = "0.2"
-
-[dependencies.m3u8-rs]
-optional = true
-version = "1.0"
-
-[dependencies.tempfile]
-optional = true
-version = "3.0"
-
-[dependencies.warp]
-optional = true
-version = "0.1"
-
-[dependencies.serde_json]
-optional = true
-version = "^1.0"
-
 [dependencies.javelin-types]
 version = "0.4.0"
 path = "../javelin-types"
+
+[dependencies.javelin-rtmp]
+version = "0.4.0"
+path = "../javelin-rtmp"
 
 [dependencies.javelin-codec]
 optional = true
 version = "0.4.0"
 path = "../javelin-codec"
-
-[dependencies.javelin-rtmp]
-version = "0.4.0"
-path = "../javelin-rtmp"
 
 
 [features]
@@ -88,4 +55,3 @@ default = ["tls", "hls", "web"]
 tls = ["native-tls", "tokio-tls"]
 hls = ["m3u8-rs", "tempfile", "javelin-codec/mpegts"]
 web = ["warp", "serde_json", "hls"]
-
