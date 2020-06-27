@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         tokio::spawn(hls_service);
 
         // TODO: remove handle from RTMP and move to session
-        tokio::spawn(rtmp::Service::new(shared.clone(), hls_handle, config.rtmp.clone()));
+        tokio::spawn(rtmp::Service::new(shared, hls_handle, config.rtmp));
 
         Ok(())
     }));

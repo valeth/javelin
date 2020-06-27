@@ -41,6 +41,7 @@ pub struct Session {
 }
 
 impl Session {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             watchers: Vec::new(),

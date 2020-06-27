@@ -66,7 +66,7 @@ impl Future for Service {
                 while let Some((app_name, request)) = try_ready!(self.on_trigger.poll()) {
                     let (sender, receiver) = session::channel();
 
-                    if let Err(_) = request.send(sender) {
+                    if request.send(sender).is_err() {
                         log::error!("Failed to send response message to session");
                         continue;
                     }

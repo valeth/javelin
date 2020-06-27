@@ -146,9 +146,10 @@ impl<S> Peer<S>
         Ok(())
     }
 
-    fn authenticate(&self, app: &String, key: &String) -> Result<(), Error> {
+    #[allow(clippy::ptr_arg)]
+    fn authenticate(&self, app: &str, key: &String) -> Result<(), Error> {
         if key.is_empty() || self.config.stream_keys.get(app) != Some(key) {
-            return Err(Error::StreamKeyNotPermitted(key.clone()));
+            return Err(Error::StreamKeyNotPermitted(key.to_string()));
         }
 
         Ok(())

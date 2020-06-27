@@ -23,7 +23,7 @@ pub enum Error {
 
 pub(crate) fn api(shared: Shared) -> BoxedFilter<(impl Reply,)> {
     active_streams(shared.clone())
-        .or(stream_stats(shared.clone()))
+        .or(stream_stats(shared))
         .or(server_info())
         .or_else(|err: Rejection| {
             if err.is_not_found() {
