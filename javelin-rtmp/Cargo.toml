@@ -9,13 +9,32 @@ edition = "2018"
 [dependencies]
 bytes = "^0.5"
 rml_rtmp = "^0.3"
+futures = "^0.1"
 thiserror = "^1.0"
+anyhow = "^1.0"
 log = "^0.4"
+serde = { version = "^1.0", features = ["derive"] }
+native-tls = { version = "0.2", optional = true }
+tokio-tls = { version = "0.2", optional = true }
+
+[dependencies.tokio]
+version = "^0.1"
+default-features = false
+features = ["rt-full", "io", "timer", "tcp"]
 
 [dependencies.javelin-types]
 version = "^0.4"
 path = "../javelin-types"
 
+[dependencies.javelin-core]
+version = "^0.4"
+path = "../javelin-core"
+
 
 [lib]
 crate-type = ["dylib", "rlib"]
+
+
+[features]
+default = []
+rtmps = ["native-tls", "tokio-tls"]

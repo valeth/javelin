@@ -1,15 +1,18 @@
 use {
     std::{
         collections::HashMap,
-        path::PathBuf,
         net::SocketAddr,
     },
-    anyhow::Result,
     serde::Deserialize,
 };
 
-#[cfg(feature = "tls")]
-use std::{fs::File, io::Read};
+#[cfg(feature = "rtmps")]
+use std::{
+    fs::File,
+    anyhow::Result,
+    path::PathBuf,
+    io::Read
+};
 
 
 #[derive(Debug, Clone, Deserialize)]
@@ -20,7 +23,7 @@ pub struct Config {
     #[serde(default)]
     pub stream_keys: HashMap<String, String>, // TODO: move to database
 
-    #[cfg(feature = "tls")]
+    #[cfg(feature = "rtmps")]
     #[serde(default)]
     pub tls: TlsConfig,
 }
@@ -30,6 +33,7 @@ impl Default for Config {
         Self {
             addr: default_addr(),
             stream_keys: HashMap::new(),
+            #[cfg(feature = "rtmps")]
             tls: Default::default(),
         }
     }
@@ -40,7 +44,7 @@ fn default_addr() -> SocketAddr {
 }
 
 
-#[cfg(feature = "tls")]
+#[cfg(feature = "rtmps")]
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct TlsConfig {
     #[serde(default)]
@@ -53,7 +57,7 @@ pub struct TlsConfig {
     pub cert_password: String,
 }
 
-#[cfg(feature = "tls")]
+#[cfg(feature = "rtmps")]
 impl TlsConfig {
     pub fn read_cert(&self) -> Result<Vec<u8>> {
         let path = &self.cert_path.clone().expect("No cert path");

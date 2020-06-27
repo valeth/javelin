@@ -17,7 +17,7 @@ use {
     super::{Peer, Error, Config},
 };
 
-#[cfg(feature = "tls")]
+#[cfg(feature = "rtmps")]
 use {
     native_tls,
     tokio_tls::TlsAcceptor,
@@ -91,15 +91,15 @@ fn process<S>(id: u64, stream: S, shared: &Shared, hls_handle: HlsTrigger, confi
     tokio::spawn(peer);
 }
 
-#[cfg(not(feature = "tls"))]
-fn spawner(id: u64, stream: TcpStream, shared: Shared, hls_handle: HlsTrigger, config: RtmpConfig) {
+#[cfg(not(feature = "rtmps"))]
+fn spawner(id: u64, stream: TcpStream, shared: Shared, hls_handle: HlsTrigger, config: Config) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 
     process(id, stream, &shared, hls_handle, config);
 }
 
-#[cfg(feature = "tls")]
+#[cfg(feature = "rtmps")]
 fn spawner(id: u64, stream: TcpStream, shared: Shared, hls_handle: HlsTrigger, config: Config) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");

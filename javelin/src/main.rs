@@ -3,7 +3,6 @@
 #![allow(elided_lifetimes_in_paths)]
 
 mod config;
-mod rtmp;
 mod args;
 
 #[cfg(feature = "hls")]
@@ -42,7 +41,7 @@ fn main() -> Result<()> {
         tokio::spawn(hls_service);
 
         // TODO: remove handle from RTMP and move to session
-        tokio::spawn(rtmp::Service::new(shared, hls_handle, config.rtmp));
+        tokio::spawn(javelin_rtmp::Service::new(shared, hls_handle, config.rtmp));
 
         Ok(())
     }));

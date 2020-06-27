@@ -2,7 +2,6 @@ use {
     std::convert::TryFrom,
     futures::{try_ready, sync::oneshot},
     tokio::prelude::*,
-    javelin_rtmp::{Protocol, Event},
     javelin_types::{Packet, PacketType, Metadata},
     javelin_core::{
         BytesStream,
@@ -13,6 +12,7 @@ use {
         Config,
         error::Error,
     },
+    crate::{Protocol, Event},
 };
 
 
@@ -202,7 +202,6 @@ impl<S> Future for Peer<S>
     }
 }
 
-#[cfg(feature = "hls")]
 fn register_on_hls_server(stream: &mut session::Session, hls_handle: &HlsTrigger, app_name: &str) {
     let (request, response) = oneshot::channel();
 

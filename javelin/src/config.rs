@@ -6,7 +6,7 @@ use {
     serde::Deserialize,
     serde_yaml as yaml,
     anyhow::Result,
-    crate::rtmp::Config as RtmpConfig,
+    javelin_rtmp::Config as RtmpConfig,
 };
 
 #[cfg(feature = "hls")]
