@@ -1,0 +1,28 @@
+[package]
+authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
+name = "javelin-core"
+description = "Simple streaming server (core)"
+keywords = ["live-streaming"]
+license = "GPL-3.0"
+repository = "https://gitlab.com/valeth/javelin.git"
+version = "0.4.0"
+edition = "2018"
+
+
+[dependencies]
+bytes = "^0.5"
+parking_lot = "^0.11"
+futures = "^0.1"
+thiserror = "^1.0"
+anyhow = "^1.0"
+log = "^0.4"
+chrono = { version = "^0.4", features = ["serde"] }
+
+[dependencies.tokio]
+version = "^0.1"
+default-features = false
+features = ["rt-full", "io", "timer"]
+
+[dependencies.javelin-types]
+version = "0.4.0"
+path = "../javelin-types"

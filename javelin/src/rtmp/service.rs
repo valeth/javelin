@@ -9,12 +9,12 @@ use {
         prelude::*,
         net::{TcpListener, TcpStream, tcp::Incoming},
     },
-    super::{Peer, Error, Config},
-    crate::{
+    javelin_core::{
+        session::Trigger as HlsTrigger,
         BytesStream,
         shared::Shared,
-        hls::service::Trigger as HlsTrigger,
     },
+    super::{Peer, Error, Config},
 };
 
 #[cfg(feature = "tls")]

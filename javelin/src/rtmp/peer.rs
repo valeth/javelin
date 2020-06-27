@@ -4,11 +4,10 @@ use {
     tokio::prelude::*,
     javelin_rtmp::{Protocol, Event},
     javelin_types::{Packet, PacketType, Metadata},
-    crate::{
+    javelin_core::{
         BytesStream,
+        session::{self, Message, Sender, Receiver, Session, Trigger as HlsTrigger},
         shared::Shared,
-        session::{self, Message, Sender, Receiver, Session},
-        hls::service::Trigger as HlsTrigger,
     },
     super::{
         Config,

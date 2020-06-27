@@ -4,13 +4,13 @@ use {
         sync::Arc,
     },
     parking_lot::RwLock,
-    crate::session,
+    crate::Session,
 };
 
 
 #[derive(Clone)]
 pub struct Shared {
-    pub streams: Arc<RwLock<HashMap<String, session::Session>>>,
+    pub streams: Arc<RwLock<HashMap<String, Session>>>,
 }
 
 impl Shared {

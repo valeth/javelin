@@ -1,19 +1,11 @@
 use {
     std::{fs, path::Path},
     tokio::prelude::*,
-    futures::{
-        try_ready,
-        sync::{mpsc, oneshot},
-    },
+    futures::try_ready,
     anyhow::{Result, bail},
+    javelin_core::session,
     super::{file_cleaner, writer::Writer, Config},
-    crate::session,
 };
-
-pub type ReturnValue<V> = oneshot::Sender<V>;
-pub type Payload = (String, ReturnValue<session::Sender>);
-pub type Trigger = mpsc::UnboundedSender<Payload>;
-
 
 enum State {
     Initializing,
@@ -24,14 +16,14 @@ enum State {
 pub struct Service {
     config: Config,
     state: State,
-    trigger: Trigger,
-    on_trigger: mpsc::UnboundedReceiver<Payload>,
+    trigger: session::Trigger,
+    on_trigger: session::OnTrigger,
 }
 
 
 impl Service {
     pub fn new(config: Config) -> Self {
-        let (trigger, on_trigger) = mpsc::unbounded();
+        let (trigger, on_trigger) = session::trigger_channel();
 
         Self {
             config,
@@ -41,7 +33,7 @@ impl Service {
         }
     }
 
-    pub fn trigger_handle(&self) -> Trigger {
+    pub fn trigger_handle(&self) -> session::Trigger {
         self.trigger.clone()
     }
 

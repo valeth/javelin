@@ -1,11 +1,21 @@
 use {
     std::convert::TryFrom,
     bytes::Bytes,
-    futures::sync::mpsc,
+    futures::sync::{mpsc, oneshot},
     chrono::prelude::{DateTime, Utc},
     anyhow::Result,
     javelin_types::{Packet, PacketType, Metadata},
 };
+
+
+pub type TriggerReturnValue<V> = oneshot::Sender<V>;
+pub type TriggerPayload = (String, TriggerReturnValue<Sender>);
+pub type Trigger = mpsc::UnboundedSender<TriggerPayload>;
+pub type OnTrigger = mpsc::UnboundedReceiver<TriggerPayload>;
+
+pub fn trigger_channel() -> (Trigger, OnTrigger) {
+    mpsc::unbounded()
+}
 
 
 #[derive(Clone)]

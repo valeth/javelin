@@ -15,7 +15,6 @@ edition = "2018"
 bytes = "^0.5"
 parking_lot = "^0.11"
 futures = "^0.1"
-rml_rtmp = "^0.3"
 serde_yaml = "^0.8"
 anyhow = "^1.0"
 thiserror = "^1.0"
@@ -39,6 +38,10 @@ features = ["rt-full", "io", "timer", "tcp"]
 [dependencies.javelin-types]
 version = "0.4.0"
 path = "../javelin-types"
+
+[dependencies.javelin-core]
+version = "0.4.0"
+path = "../javelin-core"
 
 [dependencies.javelin-rtmp]
 version = "0.4.0"

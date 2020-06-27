@@ -2,12 +2,12 @@ use {
     std::thread,
     warp::{Filter, Reply, Rejection, http::StatusCode},
     serde_json::json,
+    javelin_core::shared::Shared,
     super::api::{
         api,
         Error as ApiError,
     },
     crate::{
-        shared::Shared,
         config::Config,
     },
 };

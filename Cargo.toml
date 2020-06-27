@@ -3,6 +3,7 @@ members = [
     "./javelin",
     "./javelin-codec",
     "./javelin-types",
+    "./javelin-core",
     "./javelin-rtmp",
 ]
 

@@ -2,12 +2,9 @@
 #![warn(rust_2018_idioms)]
 #![allow(elided_lifetimes_in_paths)]
 
-mod bytes_stream;
-mod shared;
 mod config;
 mod rtmp;
 mod args;
-mod session;
 
 #[cfg(feature = "hls")]
 mod hls;
@@ -19,11 +16,8 @@ mod web;
 use {
     futures::future::lazy,
     anyhow::Result,
-    bytes_stream::BytesStream,
-    self::{
-        config::{load_config, Config},
-        shared::Shared,
-    },
+    javelin_core::shared::Shared,
+    self::config::{load_config, Config},
 };
 
 

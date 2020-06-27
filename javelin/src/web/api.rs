@@ -7,7 +7,7 @@ use {
     },
     serde_json::json,
     thiserror::Error,
-    crate::Shared,
+    javelin_core::shared::Shared,
 };
 
 
