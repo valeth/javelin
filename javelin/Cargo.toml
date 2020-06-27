@@ -53,5 +53,5 @@ path = "../javelin-codec"
 [features]
 default = ["tls", "hls", "web"]
 tls = ["native-tls", "tokio-tls"]
-hls = ["m3u8-rs", "tempfile", "javelin-codec/mpegts"]
+hls = ["m3u8-rs", "tempfile", "javelin-codec/mpegts"] # breaks without feature at the moment
 web = ["warp", "serde_json", "hls"]

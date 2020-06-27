@@ -16,17 +16,18 @@ use {
         flv,
         mpegts::TransportStream,
     },
+    javelin_types::{Packet, PacketType},
     super::{
         file_cleaner,
         m3u8::Playlist,
         Config,
     },
-    crate::media::{self, Media},
+    crate::session,
 };
 
 
 pub struct Writer {
-    receiver: media::Receiver,
+    receiver: session::Receiver,
     write_interval: u64,
     next_write: u64,
     last_keyframe: u64,
@@ -39,7 +40,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn create(app_name: String, receiver: media::Receiver, fcleaner_sender: file_cleaner::Sender, config: &Config) -> Result<Self> {
+    pub fn create(app_name: String, receiver: session::Receiver, fcleaner_sender: file_cleaner::Sender, config: &Config) -> Result<Self> {
         let write_interval = 2000; // milliseconds
         let next_write = write_interval; // milliseconds
 
@@ -63,7 +64,7 @@ impl Writer {
         })
     }
 
-    fn handle_h264<T>(&mut self, timestamp: T, bytes: &[u8]) -> Result<()>
+    fn handle_video<T>(&mut self, timestamp: T, bytes: &[u8]) -> Result<()>
         where T: Into<u64>
     {
         let timestamp: u64 = timestamp.into();
@@ -111,7 +112,7 @@ impl Writer {
         Ok(())
     }
 
-    fn handle_aac<T>(&mut self, timestamp: T, bytes: &[u8]) -> Result<()>
+    fn handle_audio<T>(&mut self, timestamp: T, bytes: &[u8]) -> Result<()>
         where T: Into<u64>
     {
         let timestamp: u64 = timestamp.into();
@@ -139,13 +140,32 @@ impl Writer {
         Ok(())
     }
 
-    fn handle(&mut self, media: Media) -> Result<()> {
-        match media {
-            Media::H264(timestamp, bytes) => self.handle_h264(timestamp.value, &bytes),
-            Media::AAC(timestamp, bytes) => self.handle_aac(timestamp.value, &bytes),
+    fn handle_message(&mut self, message: session::Message) -> Result<()> {
+        match message {
+            session::Message::Packet(packet) => self.handle_packet(packet),
+            _ => Ok(())
+        }
+    }
+
+    fn handle_packet(&mut self, packet: Packet) -> Result<()> {
+        match packet.kind {
+            PacketType::Video => {
+                self.handle_video(packet.timestamp.unwrap(), packet.as_ref())
+            }
+            PacketType::Audio => {
+                self.handle_audio(packet.timestamp.unwrap(), packet.as_ref())
+            }
+            _ => Ok(())
         }
     }
 }
+
+impl Drop for Writer {
+    fn drop(&mut self) {
+        log::info!("Closing HLS writer for {}", self.stream_path.display());
+    }
+}
+
 
 
 impl Future for Writer {
@@ -153,8 +173,8 @@ impl Future for Writer {
     type Error = ();
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        while let Some(media) = try_ready!(self.receiver.poll()) {
-            self.handle(media).map_err(|why| log::error!("{:?}", why))?;
+        while let Some(message) = try_ready!(self.receiver.poll()) {
+            self.handle_message(message).map_err(|why| log::error!("{:?}", why))?;
         }
 
         Ok(Async::Ready(()))

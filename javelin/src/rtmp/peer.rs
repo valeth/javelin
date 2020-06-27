@@ -1,6 +1,6 @@
 use {
     std::convert::TryFrom,
-    futures::try_ready,
+    futures::{try_ready, sync::oneshot},
     tokio::prelude::*,
     javelin_rtmp::{Protocol, Event},
     javelin_types::{Packet, PacketType, Metadata},
@@ -8,6 +8,7 @@ use {
         BytesStream,
         shared::Shared,
         session::{self, Message, Sender, Receiver, Session},
+        hls::service::Trigger as HlsTrigger,
     },
     super::{
         Config,
@@ -29,12 +30,13 @@ pub struct Peer<S>
     config: Config,
     app_name: Option<String>,
     disconnecting: bool,
+    hls_handle: HlsTrigger,
 }
 
 impl<S> Peer<S>
     where S: AsyncRead + AsyncWrite
 {
-    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared, config: Config) -> Self {
+    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared, hls_handle: HlsTrigger, config: Config) -> Self {
         let (session_sender, session_receiver) = session::channel();
 
         Self {
@@ -47,6 +49,7 @@ impl<S> Peer<S>
             config,
             app_name: None,
             disconnecting: false,
+            hls_handle,
         }
     }
 
@@ -97,7 +100,10 @@ impl<S> Peer<S>
                 self.app_name = Some(app_name.clone());
                 let mut streams = self.shared.streams.write();
                 streams.remove(&app_name);
-                streams.insert(app_name, Session::new());
+                let mut stream = Session::new();
+                // TODO: move into session when implemented
+                register_on_hls_server(&mut stream, &self.hls_handle, &app_name);
+                streams.insert(app_name, stream);
             },
             Event::JoinSession { app_name, .. } => {
                 let mut streams = self.shared.streams.write();
@@ -118,12 +124,12 @@ impl<S> Peer<S>
                 }
 
                 if let Some(audio_header) = &stream.audio_seq_header {
-                    let packet = Packet::new_audio(0, audio_header.clone());
+                    let packet = Packet::new_audio(0u32, audio_header.clone());
                     self.send_back(Message::Packet(packet));
                 }
 
                 if let Some(video_header) = &stream.video_seq_header {
-                    let packet = Packet::new_video(0, video_header.clone());
+                    let packet = Packet::new_video(0u32, video_header.clone());
                     self.send_back(Message::Packet(packet));
                 }
             }
@@ -193,5 +199,21 @@ impl<S> Future for Peer<S>
         }
 
         Ok(Async::NotReady)
+    }
+}
+
+#[cfg(feature = "hls")]
+fn register_on_hls_server(stream: &mut session::Session, hls_handle: &HlsTrigger, app_name: &str) {
+    let (request, response) = oneshot::channel();
+
+    if let Err(err) = hls_handle.unbounded_send((app_name.to_string(), request)) {
+        log::error!("{}", err);
+        return;
+    }
+
+    if let Err(err) = response.map(|hls_writer_handle| {
+        stream.add_watcher(hls_writer_handle)
+    }).wait() {
+        log::error!("{}", err);
     }
 }

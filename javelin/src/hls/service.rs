@@ -7,13 +7,12 @@ use {
     },
     anyhow::{Result, bail},
     super::{file_cleaner, writer::Writer, Config},
-    crate::media,
+    crate::session,
 };
 
-
-type Message = (String, oneshot::Sender<media::Sender>);
-type Receiver = mpsc::UnboundedReceiver<Message>;
-pub type Sender = mpsc::UnboundedSender<Message>;
+pub type ReturnValue<V> = oneshot::Sender<V>;
+pub type Payload = (String, ReturnValue<session::Sender>);
+pub type Trigger = mpsc::UnboundedSender<Payload>;
 
 
 enum State {
@@ -25,25 +24,25 @@ enum State {
 pub struct Service {
     config: Config,
     state: State,
-    sender: Sender,
-    receiver: Receiver,
+    trigger: Trigger,
+    on_trigger: mpsc::UnboundedReceiver<Payload>,
 }
 
 
 impl Service {
     pub fn new(config: Config) -> Self {
-        let (sender, receiver) = mpsc::unbounded();
+        let (trigger, on_trigger) = mpsc::unbounded();
 
         Self {
             config,
             state: State::Initializing,
-            sender,
-            receiver,
+            trigger,
+            on_trigger,
         }
     }
 
-    pub fn sender(&self) -> Sender {
-        self.sender.clone()
+    pub fn trigger_handle(&self) -> Trigger {
+        self.trigger.clone()
     }
 
     fn initialize(&mut self) -> Result<()>{
@@ -72,9 +71,13 @@ impl Future for Service {
                 return Ok(Async::NotReady);
             },
             State::Listening(fcleaner_sender) => {
-                while let Some((app_name, request)) = try_ready!(self.receiver.poll()) {
-                    let (sender, receiver) = mpsc::unbounded();
-                    request.send(sender).unwrap();
+                while let Some((app_name, request)) = try_ready!(self.on_trigger.poll()) {
+                    let (sender, receiver) = session::channel();
+
+                    if let Err(_) = request.send(sender) {
+                        log::error!("Failed to send response message to session");
+                        continue;
+                    }
 
                     match Writer::create(app_name, receiver, fcleaner_sender.clone(), &self.config) {
                         Ok(writer) => { tokio::spawn(writer); },

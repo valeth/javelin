@@ -31,6 +31,18 @@ impl From<Timestamp> for u32 {
     }
 }
 
+impl From<u64> for Timestamp {
+    fn from(val: u64) -> Self {
+        Self { value: val }
+    }
+}
+
+impl From<Timestamp> for u64 {
+    fn from(val: Timestamp) -> Self {
+        val.value
+    }
+}
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata(StringMap);

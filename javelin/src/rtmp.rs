@@ -1,7 +1,7 @@
 mod config;
 mod error;
 pub mod peer;
-pub mod server;
+pub mod service;
 
 
 use self::{
@@ -10,6 +10,6 @@ use self::{
 };
 
 pub use self::{
-    server::Server,
+    service::Service,
     config::Config,
 };

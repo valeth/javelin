@@ -10,7 +10,11 @@ use {
         net::{TcpListener, TcpStream, tcp::Incoming},
     },
     super::{Peer, Error, Config},
-    crate::{BytesStream, shared::Shared},
+    crate::{
+        BytesStream,
+        shared::Shared,
+        hls::service::Trigger as HlsTrigger,
+    },
 };
 
 #[cfg(feature = "tls")]
@@ -23,15 +27,16 @@ use {
 type ClientId = u64;
 
 
-pub struct Server {
+pub struct Service {
     shared: Shared,
     listener: Incoming,
     client_id: AtomicUsize,
     config: Config,
+    hls_handle: HlsTrigger, // TODO: move this to session when implemented
 }
 
-impl Server {
-    pub fn new(shared: Shared, config: Config) -> Self {
+impl Service {
+    pub fn new(shared: Shared, hls_handle: HlsTrigger, config: Config) -> Self {
         let addr = &config.addr;
         let listener = TcpListener::bind(addr).expect("Failed to bind TCP listener");
 
@@ -42,6 +47,7 @@ impl Server {
             config,
             listener: listener.incoming(),
             client_id: AtomicUsize::default(),
+            hls_handle,
         }
     }
 
@@ -54,13 +60,13 @@ impl Server {
     }
 }
 
-impl Future for Server {
+impl Future for Service {
     type Item = ();
     type Error = ();
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         while let Some(tcp_stream) = try_ready!(self.listener.poll().map_err(|err| log::error!("{}", err))) {
-            spawner(self.client_id(), tcp_stream, self.shared.clone(), self.config.clone());
+            spawner(self.client_id(), tcp_stream, self.shared.clone(), self.hls_handle.clone(), self.config.clone());
             self.increment_client_id();
         }
 
@@ -68,13 +74,13 @@ impl Future for Server {
     }
 }
 
-fn process<S>(id: u64, stream: S, shared: &Shared, config: Config)
+fn process<S>(id: u64, stream: S, shared: &Shared, hls_handle: HlsTrigger, config: Config)
     where S: AsyncRead + AsyncWrite + Send + 'static
 {
     log::info!("New client connection: {}", id);
 
     let bytes_stream = BytesStream::new(stream);
-    let peer = Peer::new(id, bytes_stream, shared.clone(), config)
+    let peer = Peer::new(id, bytes_stream, shared.clone(), hls_handle, config)
         .map_err(|err| {
             match err {
                 Error::Disconnected(e) if e.kind() == IoErrorKind::ConnectionReset => (),
@@ -86,15 +92,15 @@ fn process<S>(id: u64, stream: S, shared: &Shared, config: Config)
 }
 
 #[cfg(not(feature = "tls"))]
-fn spawner(id: u64, stream: TcpStream, shared: Shared, config: RtmpConfig) {
+fn spawner(id: u64, stream: TcpStream, shared: Shared, hls_handle: HlsTrigger, config: RtmpConfig) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 
-    process(id, stream, &shared, config);
+    process(id, stream, &shared, hls_handle, config);
 }
 
 #[cfg(feature = "tls")]
-fn spawner(id: u64, stream: TcpStream, shared: Shared, config: Config) {
+fn spawner(id: u64, stream: TcpStream, shared: Shared, hls_handle: HlsTrigger, config: Config) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 
@@ -108,7 +114,7 @@ fn spawner(id: u64, stream: TcpStream, shared: Shared, config: Config) {
 
         let tls_accept = tls_acceptor.accept(stream)
             .and_then(move |tls_stream| {
-                process(id, tls_stream, &shared, config);
+                process(id, tls_stream, &shared, hls_handle, config);
                 Ok(())
             })
             .map_err(|err| {
@@ -117,6 +123,6 @@ fn spawner(id: u64, stream: TcpStream, shared: Shared, config: Config) {
 
         tokio::spawn(tls_accept);
     } else {
-        process(id, stream, &shared, config);
+        process(id, stream, &shared, hls_handle, config);
     }
 }

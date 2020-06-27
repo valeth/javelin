@@ -5,7 +5,6 @@
 mod bytes_stream;
 mod shared;
 mod config;
-mod media;
 mod rtmp;
 mod args;
 mod session;
@@ -44,9 +43,12 @@ fn main() -> Result<()> {
 
     tokio::run(lazy(move || {
         #[cfg(feature = "hls")]
-        tokio::spawn(hls::Service::new(config.hls.clone()));
+        let hls_service = hls::Service::new(config.hls.clone());
+        let hls_handle = hls_service.trigger_handle();
+        tokio::spawn(hls_service);
 
-        tokio::spawn(rtmp::Server::new(shared.clone(), config.rtmp.clone()));
+        // TODO: remove handle from RTMP and move to session
+        tokio::spawn(rtmp::Service::new(shared.clone(), hls_handle, config.rtmp.clone()));
 
         Ok(())
     }));
