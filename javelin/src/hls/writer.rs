@@ -4,8 +4,6 @@ use {
         path::{Path, PathBuf},
         fs,
     },
-    futures::try_ready,
-    tokio::prelude::*,
     chrono::Utc,
     anyhow::{Result, bail},
     javelin_codec::{
@@ -62,6 +60,14 @@ impl Writer {
             aac_coder: AacCoder::new(),
             stream_path,
         })
+    }
+
+    pub async fn run(mut self) -> Result<()> {
+        while let Some(message) = self.receiver.recv().await {
+            self.handle_message(message).map_err(|why| log::error!("{:?}", why)).unwrap();
+        }
+
+        Ok(())
     }
 
     fn handle_video<T>(&mut self, timestamp: T, bytes: &[u8]) -> Result<()>
@@ -166,20 +172,6 @@ impl Drop for Writer {
     }
 }
 
-
-
-impl Future for Writer {
-    type Item = ();
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        while let Some(message) = try_ready!(self.receiver.poll()) {
-            self.handle_message(message).map_err(|why| log::error!("{:?}", why))?;
-        }
-
-        Ok(Async::Ready(()))
-    }
-}
 
 fn prepare_stream_directory<P: AsRef<Path>>(path: P) -> Result<()> {
     let stream_path = path.as_ref();

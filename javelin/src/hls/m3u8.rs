@@ -53,7 +53,7 @@ impl Playlist {
             .collect();
 
         self.playlist.media_sequence += paths.len() as i32;
-        self.file_cleaner.unbounded_send((Duration::from_millis(delete_after), paths)).unwrap();
+        self.file_cleaner.send((Duration::from_millis(delete_after), paths)).unwrap();
     }
 
     pub fn add_media_segment<S>(&mut self, uri: S, duration: u64)

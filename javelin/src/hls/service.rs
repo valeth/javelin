@@ -1,21 +1,14 @@
 use {
     std::{fs, path::Path},
-    tokio::prelude::*,
-    futures::try_ready,
     anyhow::{Result, bail},
+    warp::Filter,
     javelin_core::session,
     super::{file_cleaner, writer::Writer, Config},
 };
 
-enum State {
-    Initializing,
-    Listening(file_cleaner::Sender),
-}
-
 
 pub struct Service {
     config: Config,
-    state: State,
     trigger: session::Trigger,
     on_trigger: session::OnTrigger,
 }
@@ -27,59 +20,58 @@ impl Service {
 
         Self {
             config,
-            state: State::Initializing,
             trigger,
             on_trigger,
         }
     }
 
-    pub fn trigger_handle(&self) -> session::Trigger {
-        self.trigger.clone()
-    }
-
-    fn initialize(&mut self) -> Result<()>{
-        let hls_root = &self.config.root_dir;
+    pub async fn run(mut self)  {
+        let hls_root = self.config.root_dir.clone();
         log::info!("HLS directory located at '{}'", hls_root.display());
-        directory_cleanup(hls_root)?;
+
+        if let Err(why) = directory_cleanup(&hls_root) {
+            log::error!("{}", why);
+            return
+        }
 
         let fcleaner = file_cleaner::FileCleaner::new();
         let fcleaner_sender = fcleaner.sender();
-        tokio::spawn(fcleaner);
-        self.state = State::Listening(fcleaner_sender);
+        tokio::spawn(async move {
+            fcleaner.run().await
+        });
 
-        Ok(())
-    }
-}
+        if self.config.web.enabled {
+            let addr = self.config.web.addr;
 
-impl Future for Service {
-    type Item = ();
-    type Error = ();
+            let routes = warp::path("hls")
+                .and(warp::fs::dir(hls_root));
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match &self.state {
-            State::Initializing => {
-                self.initialize().expect("HLS initialization failed");
-                task::current().notify(); // poll again ASAP
-                return Ok(Async::NotReady);
-            },
-            State::Listening(fcleaner_sender) => {
-                while let Some((app_name, request)) = try_ready!(self.on_trigger.poll()) {
-                    let (sender, receiver) = session::channel();
-
-                    if request.send(sender).is_err() {
-                        log::error!("Failed to send response message to session");
-                        continue;
-                    }
-
-                    match Writer::create(app_name, receiver, fcleaner_sender.clone(), &self.config) {
-                        Ok(writer) => { tokio::spawn(writer); },
-                        Err(why) => log::error!("Failed to create writer: {:?}", why),
-                    }
-                }
-            }
+            tokio::spawn(async move {
+                warp::serve(routes).run(addr).await;
+            });
         }
 
-        Ok(Async::Ready(()))
+        while let Some((app_name, request)) = self.on_trigger.recv().await {
+            let (sender, receiver) = session::channel();
+
+            if request.send(sender).is_err() {
+                log::error!("Failed to send response message to session");
+                continue;
+            }
+
+            match Writer::create(app_name, receiver, fcleaner_sender.clone(), &self.config) {
+                Ok(writer) => {
+                    tokio::spawn(async move {
+                        writer.run().await.unwrap()
+                    });
+                },
+                Err(why) => log::error!("Failed to create writer: {:?}", why),
+            }
+        }
+    }
+
+    pub fn trigger_handle(&self) -> session::Trigger {
+        self.trigger.clone()
     }
 }
 

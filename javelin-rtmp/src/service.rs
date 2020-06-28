@@ -4,14 +4,12 @@ use {
         sync::atomic::{AtomicUsize, Ordering},
         time::Duration,
     },
-    futures::try_ready,
     tokio::{
         prelude::*,
-        net::{TcpListener, TcpStream, tcp::Incoming},
+        net::{TcpListener, TcpStream},
     },
     javelin_core::{
         session::Trigger as HlsTrigger,
-        BytesStream,
         shared::Shared,
     },
     super::{Peer, Error, Config},
@@ -29,7 +27,6 @@ type ClientId = u64;
 
 pub struct Service {
     shared: Shared,
-    listener: Incoming,
     client_id: AtomicUsize,
     config: Config,
     hls_handle: HlsTrigger, // TODO: move this to session when implemented
@@ -37,17 +34,28 @@ pub struct Service {
 
 impl Service {
     pub fn new(shared: Shared, hls_handle: HlsTrigger, config: Config) -> Self {
-        let addr = &config.addr;
-        let listener = TcpListener::bind(addr).expect("Failed to bind TCP listener");
-
-        log::info!("Starting up Javelin RTMP server on {}", addr);
-
         Self {
             shared,
             config,
-            listener: listener.incoming(),
             client_id: AtomicUsize::default(),
             hls_handle,
+        }
+    }
+
+    pub async fn run(mut self) {
+        let addr = &self.config.addr;
+        log::info!("Starting up Javelin RTMP server on {}", addr);
+
+        let mut listener = TcpListener::bind(addr).await.expect("Failed to bind TCP listener");
+
+        loop {
+            match listener.accept().await {
+                Ok((tcp_stream, _addr)) => {
+                    spawner(self.client_id(), tcp_stream, self.shared.clone(), self.hls_handle.clone(), self.config.clone());
+                    self.increment_client_id();
+                },
+                Err(why) => log::error!("{}", why),
+            }
         }
     }
 
@@ -60,35 +68,21 @@ impl Service {
     }
 }
 
-impl Future for Service {
-    type Item = ();
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        while let Some(tcp_stream) = try_ready!(self.listener.poll().map_err(|err| log::error!("{}", err))) {
-            spawner(self.client_id(), tcp_stream, self.shared.clone(), self.hls_handle.clone(), self.config.clone());
-            self.increment_client_id();
-        }
-
-        Ok(Async::Ready(()))
-    }
-}
 
 fn process<S>(id: u64, stream: S, shared: &Shared, hls_handle: HlsTrigger, config: Config)
-    where S: AsyncRead + AsyncWrite + Send + 'static
+    where S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static
 {
     log::info!("New client connection: {}", id);
+    let peer = Peer::new(id, stream, shared.clone(), hls_handle, config);
 
-    let bytes_stream = BytesStream::new(stream);
-    let peer = Peer::new(id, bytes_stream, shared.clone(), hls_handle, config)
-        .map_err(|err| {
+    tokio::spawn(async move {
+        if let Err(err) = peer.run().await {
             match err {
                 Error::Disconnected(e) if e.kind() == IoErrorKind::ConnectionReset => (),
                 e => log::error!("{}", e)
             }
-        });
-
-    tokio::spawn(peer);
+        }
+    });
 }
 
 #[cfg(not(feature = "rtmps"))]

@@ -3,7 +3,7 @@ use {
         collections::HashMap,
         sync::Arc,
     },
-    parking_lot::RwLock,
+    tokio::sync::RwLock,
     crate::Session,
 };
 

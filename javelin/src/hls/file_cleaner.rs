@@ -2,17 +2,20 @@ use {
     std::{
         path::PathBuf,
         fs,
+    },
+    tokio::{
+        stream::StreamExt,
+        time::DelayQueue,
+        sync::mpsc,
         time::{Instant, Duration},
     },
-    futures::sync::mpsc::{self, UnboundedSender, UnboundedReceiver},
-    tokio::{prelude::*, timer::DelayQueue},
 };
 
 
 type Batch = Vec<PathBuf>;
 type Message = (Duration, Batch);
-pub type Sender = UnboundedSender<Message>;
-type Receiver = UnboundedReceiver<Message>;
+pub type Sender = mpsc::UnboundedSender<Message>;
+type Receiver = mpsc::UnboundedReceiver<Message>;
 
 
 pub struct FileCleaner {
@@ -23,7 +26,7 @@ pub struct FileCleaner {
 
 impl FileCleaner {
     pub fn new() -> Self {
-        let (sender, receiver) = mpsc::unbounded();
+        let (sender, receiver) = mpsc::unbounded_channel();
 
         Self {
             items: DelayQueue::new(),
@@ -32,44 +35,27 @@ impl FileCleaner {
         }
     }
 
+    pub async fn run(mut self) {
+        loop {
+            let (duration, files) = self.receiver.recv().await.unwrap();
+
+            let timestamp = Instant::now() + ((duration / 100) * 150);
+            log::debug!("{} files queued for cleanup at {:?}", files.len(), timestamp);
+            self.items.insert_at(files, timestamp);
+
+            match self.items.next().await {
+                Some(Ok(expired)) => remove_files(expired.get_ref()),
+                Some(Err(why)) => log::error!("{}", why),
+                None => ()
+            }
+        }
+    }
+
     pub fn sender(&self) -> Sender {
         self.sender.clone()
     }
-
-    fn get_new(&mut self) {
-        for _ in 0..10 {
-            match self.receiver.poll() {
-                Ok(Async::Ready(Some((duration, files)))) => {
-                    let timestamp = Instant::now() + ((duration / 100) * 150);
-                    log::debug!("{} files queued for cleanup at {:?}", files.len(), timestamp);
-                    self.items.insert_at(files, timestamp);
-                },
-                _ => break,
-            }
-        }
-    }
 }
 
-impl Future for FileCleaner {
-    type Item = ();
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.get_new();
-
-        loop {
-            match self.items.poll() {
-                Ok(Async::NotReady) => return Ok(Async::NotReady),
-                Ok(Async::Ready(None)) => return Ok(Async::NotReady),
-                Ok(Async::Ready(Some(files))) => remove_files(&files.into_inner()),
-                Err(why) => {
-                    log::error!("{:?}", why);
-                    return Err(());
-                }
-            }
-        }
-    }
-}
 
 fn remove_files(paths: &[PathBuf]) {
     log::debug!("Cleaning up {} files", paths.len());
@@ -78,7 +64,6 @@ fn remove_files(paths: &[PathBuf]) {
         remove_file(path);
     }
 }
-
 
 fn remove_file(path: &PathBuf) {
     if let Err(why) = fs::remove_file(path) {

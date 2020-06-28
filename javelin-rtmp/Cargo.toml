@@ -9,18 +9,19 @@ edition = "2018"
 [dependencies]
 bytes = "^0.5"
 rml_rtmp = "^0.3"
-futures = "^0.1"
 thiserror = "^1.0"
 anyhow = "^1.0"
 log = "^0.4"
 serde = { version = "^1.0", features = ["derive"] }
+futures = "0.3.5"
+tokio-util = { version = "0.3.1", features = ["codec"] }
 native-tls = { version = "0.2", optional = true }
 tokio-tls = { version = "0.2", optional = true }
 
 [dependencies.tokio]
-version = "^0.1"
+version = "0.2.21"
 default-features = false
-features = ["rt-full", "io", "timer", "tcp"]
+features = ["io-util", "stream", "tcp"]
 
 [dependencies.javelin-types]
 version = "^0.4"

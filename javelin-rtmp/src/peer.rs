@@ -1,10 +1,14 @@
 use {
     std::convert::TryFrom,
-    futures::{try_ready, sync::oneshot},
-    tokio::prelude::*,
+    futures::SinkExt,
+    tokio::{
+        prelude::*,
+        stream::StreamExt,
+        sync::oneshot,
+    },
+    tokio_util::codec::{Framed, BytesCodec},
     javelin_types::{Packet, PacketType, Metadata},
     javelin_core::{
-        BytesStream,
         session::{self, Message, Sender, Receiver, Session, Trigger as HlsTrigger},
         shared::Shared,
     },
@@ -16,78 +20,117 @@ use {
 };
 
 
+enum State {
+    Initializing,
+    Publishing,
+    Playing,
+    Disconnecting,
+}
+
 /// Represents an incoming connection
 pub struct Peer<S>
-    where S: AsyncRead + AsyncWrite
+    where S: AsyncRead + AsyncWrite + Unpin
 {
     id: u64,
-    bytes_stream: BytesStream<S>,
+    bytes_stream: Framed<S, BytesCodec>,
     session_receiver: Receiver,
     session_sender: Sender,
     shared: Shared,
     proto: Protocol,
     config: Config,
     app_name: Option<String>,
-    disconnecting: bool,
+    state: State,
     hls_handle: HlsTrigger,
 }
 
 impl<S> Peer<S>
-    where S: AsyncRead + AsyncWrite
+    where S: AsyncRead + AsyncWrite + Unpin
 {
-    pub fn new(id: u64, bytes_stream: BytesStream<S>, shared: Shared, hls_handle: HlsTrigger, config: Config) -> Self {
+    pub fn new(id: u64, bytes_stream: S, shared: Shared, hls_handle: HlsTrigger, config: Config) -> Self {
         let (session_sender, session_receiver) = session::channel();
 
         Self {
             id,
-            bytes_stream,
+            bytes_stream: Framed::new(bytes_stream, BytesCodec::new()),
             session_receiver,
             session_sender,
             shared,
             proto: Protocol::new(),
             config,
             app_name: None,
-            disconnecting: false,
+            state: State::Initializing,
             hls_handle,
         }
     }
 
-    fn handle_message(&mut self, message: Message) -> Result<(), Error> {
+    pub async fn run(mut self) -> Result<(), Error> {
+        loop {
+            while let Ok(msg) = self.session_receiver.try_recv() {
+               if self.handle_session_message(msg).await.is_err() {
+                   self.state = State::Disconnecting;
+               }
+            }
+
+            match self.state {
+                State::Initializing | State::Publishing => {
+                    match self.bytes_stream.try_next().await {
+                        Ok(Some(data)) => {
+                            for event in self.proto.handle_bytes(&data).unwrap() {
+                                self.handle_event(event).await?;
+                            }
+                        },
+                        Ok(None) => {
+                            return Ok(());
+                        },
+                        Err(why) => {
+                            log::error!("{}", why);
+                            return Ok(())
+                        },
+                    }
+                },
+                State::Disconnecting => {
+                    log::debug!("Disconnecting...");
+                    return Ok(());
+                },
+                _ => (),
+            }
+        }
+    }
+
+    async fn handle_session_message(&mut self, message: Message) -> Result<(), Error> {
         match message {
             Message::Packet(packet) => {
                 log::debug!("Peer {}: received {:?}", self.id, packet.kind);
                 match packet.kind  {
                     PacketType::Meta => {
                         let metadata = Metadata::try_from(packet).unwrap();
-                        let bytes= self.proto.pack_metadata(metadata).unwrap();
-                        self.bytes_stream.fill_write_buffer(&bytes);
+                        let bytes= self.proto.pack_metadata(metadata)?;
+                        self.bytes_stream.send(bytes.into()).await?;
                     },
                     PacketType::Video => {
-                        let bytes = self.proto.pack_video(packet).unwrap();
-                        self.bytes_stream.fill_write_buffer(&bytes);
+                        let bytes = self.proto.pack_video(packet)?;
+                        self.bytes_stream.send(bytes.into()).await?;
                     },
                     PacketType::Audio => {
-                        let bytes = self.proto.pack_audio(packet).unwrap();
-                        self.bytes_stream.fill_write_buffer(&bytes);
+                        let bytes = self.proto.pack_audio(packet)?;
+                        self.bytes_stream.send(bytes.into()).await?;
                     },
                 }
             },
-            Message::Disconnect => {
-                self.disconnecting = true;
-            }
+            _ => ()
         }
 
         Ok(())
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<(), Error> {
+    async fn handle_event(&mut self, event: Event) -> Result<(), Error> {
         match event {
             Event::ReturnData(data) => {
-                self.bytes_stream.fill_write_buffer(data.as_ref());
+                self.bytes_stream.send(data).await.expect("Failed to return data");
             },
             Event::SendPacket(packet) => {
                 let app_name = self.app_name.as_ref().unwrap();
-                let mut streams = self.shared.streams.write();
+                let mut streams = self.shared.streams.write().await;
                 let stream = streams
                     .get_mut(app_name)
                     .ok_or_else(|| Error::NoSuchStream(app_name.clone()))?;
@@ -97,22 +140,24 @@ impl<S> Peer<S>
             Event::AcquireSession { app_name, stream_key } => {
                 self.authenticate(&app_name, &stream_key)?;
                 self.app_name = Some(app_name.clone());
-                let mut streams = self.shared.streams.write();
+                let mut streams = self.shared.streams.write().await;
                 streams.remove(&app_name);
                 let mut stream = Session::new();
                 // TODO: move into session when implemented
-                register_on_hls_server(&mut stream, &self.hls_handle, &app_name);
+                register_on_hls_server(&mut stream, &mut self.hls_handle, &app_name).await;
                 streams.insert(app_name, stream);
+                self.state = State::Publishing;
             },
             Event::JoinSession { app_name, .. } => {
-                let mut streams = self.shared.streams.write();
+                let mut streams = self.shared.streams.write().await;
                 let stream = streams
                     .get_mut(&app_name)
                     .ok_or_else(|| Error::NoSuchStream(app_name))?;
                 stream.add_watcher(self.session_sender.clone());
+                self.state = State::Playing;
             },
             Event::SendInitData { app_name } => {
-                let streams = self.shared.streams.read();
+                let streams = self.shared.streams.read().await;
                 let stream = streams
                     .get(&app_name)
                     .ok_or_else(|| Error::NoSuchStream(app_name))?;
@@ -134,12 +179,12 @@ impl<S> Peer<S>
             }
             Event::ReleaseSession => {
                 let app_name = self.app_name.as_ref().unwrap();
-                let mut streams = self.shared.streams.write();
+                let mut streams = self.shared.streams.write().await;
                 streams.remove(app_name);
-                self.send_back(Message::Disconnect);
+                self.state = State::Disconnecting;
             }
             Event::LeaveSession => {
-                self.send_back(Message::Disconnect);
+                self.state = State::Disconnecting;
             },
         }
 
@@ -156,63 +201,32 @@ impl<S> Peer<S>
     }
 
     fn send_back(&self, message: Message) {
-        if let Err(why) = self.session_sender.unbounded_send(message) {
+        log::debug!("Peer {}: Send back message", self.id);
+        if let Err(why) = self.session_sender.send(message) {
             log::error!("Failed to send message back to peer {}: {}", self.id, why);
         }
     }
 }
 
 impl<S> Drop for Peer<S>
-    where S: AsyncRead + AsyncWrite
+    where S: AsyncRead + AsyncWrite + Unpin
 {
     fn drop(&mut self) {
         log::info!("Client {} disconnected", self.id);
     }
 }
 
-impl<S> Future for Peer<S>
-    where S: AsyncRead + AsyncWrite
-{
-    type Item = ();
-    type Error = Error;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        while let Async::Ready(Some(msg)) = self.session_receiver.poll().unwrap() {
-            self.handle_message(msg)?;
-            self.bytes_stream.poll_flush()?;
-        }
-
-        if self.disconnecting {
-            return Ok(Async::Ready(()));
-        }
-
-        match try_ready!(self.bytes_stream.poll()) {
-            Some(data) => {
-                for event in self.proto.handle_bytes(&data).unwrap() {
-                    self.handle_event(event)?;
-                    self.bytes_stream.poll_flush()?;
-                }
-            },
-            None => {
-                return Ok(Async::Ready(()));
-            },
-        }
-
-        Ok(Async::NotReady)
-    }
-}
-
-fn register_on_hls_server(stream: &mut session::Session, hls_handle: &HlsTrigger, app_name: &str) {
+async fn register_on_hls_server(stream: &mut session::Session, hls_handle: &mut HlsTrigger, app_name: &str) {
     let (request, response) = oneshot::channel();
 
-    if let Err(err) = hls_handle.unbounded_send((app_name.to_string(), request)) {
+    if let Err(err) = hls_handle.send((app_name.to_string(), request)) {
         log::error!("{}", err);
         return;
     }
 
-    if let Err(err) = response.map(|hls_writer_handle| {
-        stream.add_watcher(hls_writer_handle)
-    }).wait() {
-        log::error!("{}", err);
+    match response.await {
+        Ok(hls_sender) => stream.add_watcher(hls_sender),
+        Err(why) => log::error!("{}", why)
     }
 }

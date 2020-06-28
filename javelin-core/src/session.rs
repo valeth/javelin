@@ -1,7 +1,7 @@
 use {
     std::convert::TryFrom,
     bytes::Bytes,
-    futures::sync::{mpsc, oneshot},
+    tokio::sync::{mpsc, oneshot},
     chrono::prelude::{DateTime, Utc},
     anyhow::Result,
     javelin_types::{Packet, PacketType, Metadata},
@@ -14,7 +14,7 @@ pub type Trigger = mpsc::UnboundedSender<TriggerPayload>;
 pub type OnTrigger = mpsc::UnboundedReceiver<TriggerPayload>;
 
 pub fn trigger_channel() -> (Trigger, OnTrigger) {
-    mpsc::unbounded()
+    mpsc::unbounded_channel()
 }
 
 
@@ -28,7 +28,7 @@ pub type Sender = mpsc::UnboundedSender<Message>;
 pub type Receiver = mpsc::UnboundedReceiver<Message>;
 
 pub fn channel() -> (Sender, Receiver) {
-    mpsc::unbounded()
+    mpsc::unbounded_channel()
 }
 
 
@@ -74,10 +74,13 @@ impl Session {
         Ok(())
     }
 
-    pub fn send_to_watchers(&self, message: Message) {
-        for watcher in &self.watchers {
-            watcher.unbounded_send(message.clone()).unwrap()
-        }
+    pub fn send_to_watchers(&mut self, message: Message) {
+        self.watchers
+            .retain(|watcher| {
+                watcher.send(message.clone())
+                    .map_err(|e| log::error!("Failed to send to watcher: {}", e))
+                    .is_ok()
+            })
     }
 
 }
