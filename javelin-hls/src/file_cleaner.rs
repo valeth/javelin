@@ -5,9 +5,8 @@ use {
     },
     tokio::{
         stream::StreamExt,
-        time::DelayQueue,
         sync::mpsc,
-        time::{Instant, Duration},
+        time::{DelayQueue, Instant, Duration},
     },
 };
 
@@ -25,6 +24,7 @@ pub struct FileCleaner {
 }
 
 impl FileCleaner {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
 

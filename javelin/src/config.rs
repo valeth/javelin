@@ -7,13 +7,9 @@ use {
     serde_yaml as yaml,
     anyhow::Result,
     javelin_rtmp::Config as RtmpConfig,
+    javelin_hls::Config as HlsConfig,
 };
 
-#[cfg(feature = "hls")]
-use crate::hls::Config as HlsConfig;
-
-#[cfg(feature = "web")]
-use crate::web::Config as WebConfig;
 
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -21,13 +17,8 @@ pub struct Config {
     #[serde(default)]
     pub rtmp: RtmpConfig,
 
-    #[cfg(feature = "hls")]
     #[serde(default)]
     pub hls: HlsConfig,
-
-    #[cfg(feature = "web")]
-    #[serde(default)]
-    pub web: WebConfig,
 }
 
 pub fn load_config<P: AsRef<Path>>(config_dir: P) -> Result<Config> {

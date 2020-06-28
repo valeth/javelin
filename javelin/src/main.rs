@@ -5,9 +5,6 @@
 mod config;
 mod args;
 
-#[cfg(feature = "hls")]
-mod hls;
-
 
 use {
     anyhow::Result,
@@ -28,11 +25,8 @@ async fn main() -> Result<()> {
     let config = load_config(config_dir)?;
     let shared = Shared::new();
 
-    #[cfg(feature = "hls")]
-    let hls_service = hls::Service::new(config.hls.clone());
-    #[cfg(feature = "hls")]
+    let hls_service = javelin_hls::Service::new(config.hls.clone());
     let hls_handle = hls_service.trigger_handle();
-    #[cfg(feature = "hls")]
     tokio::spawn(hls_service.run());
 
     // because we have to move them
