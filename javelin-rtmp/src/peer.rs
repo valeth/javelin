@@ -1,5 +1,4 @@
 use {
-    std::convert::TryFrom,
     futures::SinkExt,
     tokio::{
         prelude::*,
@@ -8,7 +7,7 @@ use {
         time::timeout,
     },
     tokio_util::codec::{Framed, BytesCodec},
-    javelin_types::{Packet, PacketType, Metadata},
+    javelin_types::{Packet, PacketType},
     javelin_core::session::{self, Message, ManagerMessage},
     super::{
         Config,
@@ -94,24 +93,14 @@ impl<S> Peer<S>
     }
 
     async fn handle_return_packet(&mut self, packet: Packet) -> Result<(), Error> {
+        let bytes = match packet.kind  {
+            PacketType::Meta => self.proto.pack_metadata(packet)?,
+            PacketType::Video => self.proto.pack_video(packet)?,
+            PacketType::Audio => self.proto.pack_audio(packet)?,
+        };
         let duration = self.config.connection_timeout;
-        match packet.kind  {
-            PacketType::Meta => {
-                let metadata = Metadata::try_from(packet).unwrap();
-                let bytes= self.proto.pack_metadata(metadata)?;
-                timeout(duration, self.bytes_stream.send(bytes.into())).await??;
-            },
-            PacketType::Video => {
-                let bytes = self.proto.pack_video(packet)?;
-                timeout(duration, self.bytes_stream.send(bytes.into())).await??;
-            },
-            PacketType::Audio => {
-                let bytes = self.proto.pack_audio(packet)?;
-                timeout(duration, self.bytes_stream.send(bytes.into())).await??;
-            },
-        }
-
-        Ok(())
+        let res = timeout(duration, self.bytes_stream.send(bytes.into())).await?;
+        Ok(res?)
     }
 
     async fn handle_event(&mut self, event: Event) -> Result<(), Error> {

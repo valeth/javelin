@@ -1,5 +1,5 @@
 use {
-    std::convert::TryFrom,
+    std::convert::{TryFrom, TryInto},
     std::rc::Rc,
     thiserror::Error,
     bytes::Bytes,
@@ -8,7 +8,7 @@ use {
         handshake::{Handshake, PeerType, HandshakeProcessResult},
         time::RtmpTimestamp,
     },
-    javelin_types::{Packet, PacketType, Metadata},
+    javelin_types::{Packet, PacketType},
     super::convert,
 };
 
@@ -136,9 +136,9 @@ impl Protocol {
         self.handle_results(results)
     }
 
-    pub fn pack_metadata(&mut self, metadata: Metadata) -> Result<Vec<u8>, Error> {
+    pub fn pack_metadata(&mut self, packet: Packet) -> Result<Vec<u8>, Error> {
         let stream_id = self.stream_id()?;
-        let metadata = convert::into_metadata(metadata);
+        let metadata = convert::into_metadata(packet.try_into().unwrap());
         self.session()?
             .send_metadata(stream_id, Rc::new(metadata))
             .map_err(|_| Error::InvalidInput)
