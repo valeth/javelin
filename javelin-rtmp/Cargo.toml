@@ -16,7 +16,7 @@ serde = { version = "^1.0", features = ["derive"] }
 futures = "0.3.5"
 tokio-util = { version = "0.3.1", features = ["codec"] }
 native-tls = { version = "0.2", optional = true }
-tokio-tls = { version = "0.2", optional = true }
+tokio-native-tls = { version = "0.1.0", optional = true }
 
 [dependencies.tokio]
 version = "0.2.21"
@@ -38,4 +38,4 @@ crate-type = ["dylib", "rlib"]
 
 [features]
 default = []
-rtmps = ["native-tls", "tokio-tls"]
+rtmps = ["native-tls", "tokio-native-tls"]

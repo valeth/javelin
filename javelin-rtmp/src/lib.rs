@@ -1,17 +1,13 @@
 mod convert;
-mod config;
+mod proto;
+mod peer;
+pub mod config;
 pub mod error;
-pub mod proto;
-pub mod peer;
 pub mod service;
 
-use self::{
-    error::Error,
-    peer::Peer,
-};
 
 pub use self::{
-    proto::{Protocol, Event},
+    error::Error,
     service::Service,
     config::Config,
 };

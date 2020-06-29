@@ -14,7 +14,7 @@ use {
         Config,
         error::Error,
     },
-    crate::{Protocol, Event},
+    crate::proto::{Protocol, Event},
 };
 
 

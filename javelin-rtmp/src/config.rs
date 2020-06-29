@@ -7,13 +7,6 @@ use {
     serde::Deserialize,
 };
 
-#[cfg(feature = "rtmps")]
-use std::{
-    fs::File,
-    anyhow::Result,
-    path::PathBuf,
-    io::Read
-};
 
 
 #[derive(Debug, Clone, Deserialize)]
@@ -29,7 +22,7 @@ pub struct Config {
 
     #[cfg(feature = "rtmps")]
     #[serde(default)]
-    pub tls: TlsConfig,
+    pub tls: tls::Config,
 }
 
 impl Default for Config {
@@ -54,25 +47,55 @@ fn default_conn_timeout() -> Duration {
 
 
 #[cfg(feature = "rtmps")]
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct TlsConfig {
-    #[serde(default)]
-    pub enabled: bool,
+mod tls {
+    use {
+        std::{
+            fs::File,
+            path::PathBuf,
+            io::Read,
+            net::SocketAddr,
+        },
+        serde::Deserialize,
+        anyhow::{Result, Context},
+    };
 
-    #[serde(default)]
-    pub cert_path: Option<PathBuf>,
+    #[derive(Debug, Clone, Deserialize)]
+    pub struct Config {
+        #[serde(default)]
+        pub enabled: bool,
 
-    #[serde(default)]
-    pub cert_password: String,
-}
+        #[serde(default = "default_tls_addr")]
+        pub addr: SocketAddr,
 
-#[cfg(feature = "rtmps")]
-impl TlsConfig {
-    pub fn read_cert(&self) -> Result<Vec<u8>> {
-        let path = &self.cert_path.clone().expect("No cert path");
-        let mut file = File::open(path)?;
-        let mut buf = Vec::with_capacity(2500);
-        file.read_to_end(&mut buf)?;
-        Ok(buf)
+        #[serde(default)]
+        pub cert_path: Option<PathBuf>,
+
+        #[serde(default)]
+        pub cert_password: String,
+    }
+
+    impl Config {
+        pub fn read_cert(&self) -> Result<Vec<u8>> {
+            let path = &self.cert_path.as_ref().context("No cert path configured")?;
+            let mut file = File::open(path)?;
+            let mut buf = Vec::with_capacity(2500);
+            file.read_to_end(&mut buf)?;
+            Ok(buf)
+        }
+    }
+
+    impl Default for Config {
+        fn default() -> Self {
+            Self {
+                enabled: false,
+                addr: default_tls_addr(),
+                cert_path: None,
+                cert_password: String::new(),
+            }
+        }
+    }
+
+    fn default_tls_addr() -> SocketAddr {
+        SocketAddr::from(([0, 0, 0, 0], 1936))
     }
 }

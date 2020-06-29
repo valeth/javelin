@@ -43,4 +43,5 @@ path = "../javelin-hls"
 [features]
 default = ["rtmp", "hls"]
 rtmp = ["javelin-rtmp"]
+rtmps = ["javelin-rtmp/rtmps"]
 hls = ["javelin-hls"]
