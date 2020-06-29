@@ -36,9 +36,7 @@ impl FileCleaner {
     }
 
     pub async fn run(mut self) {
-        loop {
-            let (duration, files) = self.receiver.recv().await.unwrap();
-
+        while let Some((duration, files)) = self.receiver.recv().await {
             let timestamp = Instant::now() + ((duration / 100) * 150);
             log::debug!("{} files queued for cleanup at {:?}", files.len(), timestamp);
             self.items.insert_at(files, timestamp);

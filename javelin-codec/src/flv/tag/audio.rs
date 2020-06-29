@@ -82,7 +82,7 @@ impl TryFrom<&[u8]> for AudioData {
     type Error = FlvError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        if bytes.len() < 3 {
+        if bytes.len() < 2 {
             return Err(FlvError::NotEnoughData("FLV Audio Tag header"))
         }
 

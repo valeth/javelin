@@ -95,7 +95,7 @@ impl TryFrom<&[u8]> for VideoData {
     type Error = FlvError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        if bytes.len() < 6 {
+        if bytes.len() < 5 {
             return Err(FlvError::NotEnoughData("FLV Video Tag header"))
         }
 

@@ -64,7 +64,9 @@ impl Writer {
 
     pub async fn run(mut self) -> Result<()> {
         while let Ok(packet) = self.watcher.recv().await {
-            self.handle_packet(packet).map_err(|why| log::error!("{:?}", why)).unwrap();
+            if let Err(why) = self.handle_packet(packet) {
+                log::error!("{:?}", why);
+            }
         }
 
         Ok(())
