@@ -4,7 +4,8 @@ use {
     tokio::{
         prelude::*,
         stream::StreamExt,
-        sync::{oneshot, mpsc},
+        sync::{self, oneshot, mpsc},
+        time::timeout,
     },
     tokio_util::codec::{Framed, BytesCodec},
     javelin_types::{Packet, PacketType, Metadata},
@@ -17,7 +18,7 @@ use {
 };
 
 
-type ReturnQueue<P> = (mpsc::UnboundedSender<P>, mpsc::UnboundedReceiver<P>);
+type ReturnQueue<P> = (mpsc::Sender<P>, mpsc::Receiver<P>);
 
 enum State {
     Initializing,
@@ -48,7 +49,7 @@ impl<S> Peer<S>
             id,
             bytes_stream: Framed::new(stream, BytesCodec::new()),
             session_manager,
-            return_queue: mpsc::unbounded_channel(),
+            return_queue: mpsc::channel(64),
             proto: Protocol::new(),
             config,
             app_name: None,
@@ -60,30 +61,28 @@ impl<S> Peer<S>
         loop {
             while let Ok(packet) = self.return_queue.1.try_recv() {
                if self.handle_return_packet(packet).await.is_err() {
-                   self.state = State::Disconnecting;
+                   self.disconnect()?
                }
             }
 
             match &mut self.state {
                 State::Initializing | State::Publishing(_) => {
-                    match self.bytes_stream.try_next().await {
+                    let val = self.bytes_stream.try_next();
+                    match timeout(self.config.connection_timeout, val).await? {
                         Ok(Some(data)) => {
                             for event in self.proto.handle_bytes(&data).unwrap() {
                                 self.handle_event(event).await?;
                             }
                         },
-                        Ok(None) => {
-                            return Ok(());
-                        },
-                        Err(why) => {
-                            log::error!("{}", why);
-                            return Ok(())
-                        },
+                        _ => self.disconnect()?
                     }
                 },
                 State::Playing(_, watcher) => {
-                    if let Ok(packet) = watcher.try_recv() {
-                        self.send_back(packet);
+                    use sync::broadcast::RecvError;
+                    match watcher.recv().await {
+                        Ok(packet ) => self.send_back(packet).await?,
+                        Err(RecvError::Closed) => self.disconnect()?,
+                        Err(_) => ()
                     }
                 }
                 State::Disconnecting => {
@@ -95,19 +94,20 @@ impl<S> Peer<S>
     }
 
     async fn handle_return_packet(&mut self, packet: Packet) -> Result<(), Error> {
+        let duration = self.config.connection_timeout;
         match packet.kind  {
             PacketType::Meta => {
                 let metadata = Metadata::try_from(packet).unwrap();
                 let bytes= self.proto.pack_metadata(metadata)?;
-                self.bytes_stream.send(bytes.into()).await?;
+                timeout(duration, self.bytes_stream.send(bytes.into())).await??;
             },
             PacketType::Video => {
                 let bytes = self.proto.pack_video(packet)?;
-                self.bytes_stream.send(bytes.into()).await?;
+                timeout(duration, self.bytes_stream.send(bytes.into())).await??;
             },
             PacketType::Audio => {
                 let bytes = self.proto.pack_audio(packet)?;
-                self.bytes_stream.send(bytes.into()).await?;
+                timeout(duration, self.bytes_stream.send(bytes.into())).await??;
             },
         }
 
@@ -146,7 +146,7 @@ impl<S> Peer<S>
                     Ok((session_sender, session_receiver)) => {
                         self.state = State::Playing(session_sender, session_receiver);
                     }
-                    Err(_) => self.state = State::Disconnecting,
+                    Err(_) => self.disconnect()?
                 }
             },
             Event::SendInitData { .. } => {
@@ -158,25 +158,13 @@ impl<S> Peer<S>
                         .map_err(|_| Error::SessionSendFailed)?;
 
                     if let Ok((Some(meta), Some(video), Some(audio))) = response.await {
-                        self.send_back(meta);
-                        self.send_back(video);
-                        self.send_back(audio);
+                        self.send_back(meta).await?;
+                        self.send_back(video).await?;
+                        self.send_back(audio).await?;
                     }
                 }
             }
-            Event::ReleaseSession => {
-                let app_name = self.app_name.clone().unwrap();
-                if let State::Publishing(session) = &mut self.state {
-                    session.send(Message::Disconnect).map_err(|_| Error::SessionSendFailed)?;
-                }
-                self.session_manager
-                    .send(ManagerMessage::ReleaseSession(app_name))
-                    .map_err(|_| Error::SessionReleaseFailed)?;
-                self.state = State::Disconnecting;
-            }
-            Event::LeaveSession => {
-                self.state = State::Disconnecting;
-            },
+            Event::ReleaseSession | Event::LeaveSession => self.disconnect()?,
         }
 
         Ok(())
@@ -191,11 +179,25 @@ impl<S> Peer<S>
         Ok(())
     }
 
-    fn send_back(&mut self, packet: Packet) {
-        log::debug!("Peer {}: Send back packet", self.id);
-        if let Err(why) = self.return_queue.0.send(packet) {
-            log::error!("Failed to send message back to peer {}: {}", self.id, why);
+    async fn send_back(&mut self, packet: Packet) -> Result<(), Error> {
+        self.return_queue.0
+            .send_timeout(packet, self.config.connection_timeout).await
+            .map_err(|_| Error::ReturnPacketFailed(self.id))
+    }
+
+    fn disconnect(&mut self) -> Result<(), Error> {
+        if let State::Publishing(session) = &mut self.state {
+            let app_name = self.app_name.clone().unwrap();
+            session.send(Message::Disconnect).map_err(|_| Error::SessionSendFailed)?;
+
+            self.session_manager
+                .send(ManagerMessage::ReleaseSession(app_name))
+                .map_err(|_| Error::SessionReleaseFailed)?;
         }
+
+        self.state = State::Disconnecting;
+
+        Ok(())
     }
 }
 

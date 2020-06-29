@@ -2,6 +2,7 @@ use {
     std::{
         collections::HashMap,
         net::SocketAddr,
+        time::Duration,
     },
     serde::Deserialize,
 };
@@ -23,6 +24,9 @@ pub struct Config {
     #[serde(default)]
     pub stream_keys: HashMap<String, String>, // TODO: move to database
 
+    #[serde(default = "default_conn_timeout")]
+    pub connection_timeout: Duration,
+
     #[cfg(feature = "rtmps")]
     #[serde(default)]
     pub tls: TlsConfig,
@@ -33,6 +37,7 @@ impl Default for Config {
         Self {
             addr: default_addr(),
             stream_keys: HashMap::new(),
+            connection_timeout: default_conn_timeout(),
             #[cfg(feature = "rtmps")]
             tls: Default::default(),
         }
@@ -41,6 +46,10 @@ impl Default for Config {
 
 fn default_addr() -> SocketAddr {
     SocketAddr::from(([0, 0, 0, 0], 1935))
+}
+
+fn default_conn_timeout() -> Duration {
+    Duration::from_secs(5)
 }
 
 
