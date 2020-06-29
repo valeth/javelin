@@ -23,17 +23,24 @@ clap = { version = "~2.33", features = ["wrap_help"] }
 chrono = { version = "^0.4", features = ["serde"] }
 javelin-types = { version = "0.4.0", path = "../javelin-types" }
 javelin-core = { version = "0.4.0", path = "../javelin-core" }
-javelin-rtmp = { version = "0.4.0", path = "../javelin-rtmp" }
 
 [dependencies.tokio]
 version = "0.2"
 default-features = false
 features = ["rt-threaded", "macros", "time"]
 
+[dependencies.javelin-rtmp]
+version = "0.4.0"
+optional = true
+path = "../javelin-rtmp"
+
 [dependencies.javelin-hls]
 version = "0.4.0"
+optional = true
 path = "../javelin-hls"
 
 
 [features]
-default = []
+default = ["rtmp", "hls"]
+rtmp = ["javelin-rtmp"]
+hls = ["javelin-hls"]

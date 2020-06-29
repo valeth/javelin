@@ -21,20 +21,29 @@ async fn main() -> Result<()> {
 
     let args = args::build();
     let config_dir = args.value_of("config_dir").unwrap_or_default();
-
     let config = load_config(config_dir)?;
+    let mut handles = Vec::new();
 
     let session = session::Manager::new();
     let session_handle = session.sender();
-    tokio::spawn({
+    handles.push(tokio::spawn({
         session.run()
-    });
+    }));
 
-    tokio::spawn({
+    #[cfg(feature = "hls")]
+    handles.push(tokio::spawn({
         javelin_hls::Service::new(session_handle.clone(), config.hls.clone()).run()
-    });
+    }));
 
-    javelin_rtmp::Service::new(session_handle, config.rtmp).run().await;
+    #[cfg(feature = "rtmp")]
+    handles.push(tokio::spawn({
+         javelin_rtmp::Service::new(session_handle, config.rtmp).run()
+    }));
+
+    // Wait for all spawned processes to complete
+    for handle in handles {
+        handle.await?;
+    }
 
     Ok(())
 }
