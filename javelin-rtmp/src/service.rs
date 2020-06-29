@@ -8,9 +8,7 @@ use {
         prelude::*,
         net::{TcpListener, TcpStream},
     },
-    javelin_core::{
-        session::ManagerSender,
-    },
+    javelin_core::session,
     super::{Peer, Error, Config},
 };
 
@@ -27,11 +25,11 @@ type ClientId = u64;
 pub struct Service {
     client_id: AtomicUsize,
     config: Config,
-    session_manager: ManagerSender,
+    session_manager: session::ManagerHandle,
 }
 
 impl Service {
-    pub fn new(session_manager: ManagerSender, config: Config) -> Self {
+    pub fn new(session_manager: session::ManagerHandle, config: Config) -> Self {
         Self {
             config,
             client_id: AtomicUsize::default(),
@@ -66,7 +64,7 @@ impl Service {
 }
 
 
-fn process<S>(id: u64, stream: S, session_manager: ManagerSender, config: Config)
+fn process<S>(id: u64, stream: S, session_manager: session::ManagerHandle, config: Config)
     where S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static
 {
     log::info!("New client connection: {}", id);
@@ -83,7 +81,7 @@ fn process<S>(id: u64, stream: S, session_manager: ManagerSender, config: Config
 }
 
 #[cfg(not(feature = "rtmps"))]
-fn spawner(id: u64, stream: TcpStream, session_manager: ManagerSender, config: Config) {
+fn spawner(id: u64, stream: TcpStream, session_manager: session::ManagerHandle, config: Config) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 

@@ -9,12 +9,12 @@ use {
 
 pub struct Service {
     config: Config,
-    session_manager: session::ManagerSender,
+    session_manager: session::ManagerHandle,
 }
 
 
 impl Service {
-    pub fn new(session_manager: session::ManagerSender, config: Config) -> Self {
+    pub fn new(session_manager: session::ManagerHandle, config: Config) -> Self {
         Self {
             config,
             session_manager,
@@ -47,9 +47,12 @@ impl Service {
             });
         }
 
-        let (trigger, mut trigger_handle) = session::trigger_channel();
+        let (trigger, mut trigger_handle) = session::manager::trigger_channel();
 
-        self.session_manager.send(ManagerMessage::RegisterTrigger("create_session", trigger));
+        if let Err(_) = self.session_manager.send(ManagerMessage::RegisterTrigger("create_session", trigger)) {
+            log::error!("Failed to register session trigger");
+            return;
+        }
 
         while let Some((app_name, watcher)) = trigger_handle.recv().await {
             match Writer::create(app_name, watcher, fcleaner_sender.clone(), &self.config) {

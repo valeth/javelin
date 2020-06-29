@@ -8,9 +8,7 @@ use {
     },
     tokio_util::codec::{Framed, BytesCodec},
     javelin_types::{Packet, PacketType, Metadata},
-    javelin_core::{
-        session::{self, Message, ManagerMessage},
-    },
+    javelin_core::session::{self, Message, ManagerMessage},
     super::{
         Config,
         error::Error,
@@ -34,7 +32,7 @@ pub struct Peer<S>
 {
     id: u64,
     bytes_stream: Framed<S, BytesCodec>,
-    session_manager: session::ManagerSender,
+    session_manager: session::ManagerHandle,
     return_queue: ReturnQueue<Packet>,
     proto: Protocol,
     config: Config,
@@ -45,7 +43,7 @@ pub struct Peer<S>
 impl<S> Peer<S>
     where S: AsyncRead + AsyncWrite + Unpin
 {
-    pub fn new(id: u64, stream: S, session_manager: session::ManagerSender, config: Config) -> Self {
+    pub fn new(id: u64, stream: S, session_manager: session::ManagerHandle, config: Config) -> Self {
         Self {
             id,
             bytes_stream: Framed::new(stream, BytesCodec::new()),
@@ -122,52 +120,58 @@ impl<S> Peer<S>
                 self.bytes_stream.send(data).await.expect("Failed to return data");
             },
             Event::SendPacket(packet) => {
-                if let State::Publishing(sender) = &mut self.state {
-                    sender.send(Message::Packet(packet));
+                if let State::Publishing(session) = &mut self.state {
+                    session
+                        .send(Message::Packet(packet))
+                        .map_err(|_| Error::SessionSendFailed)?;
                 }
             },
             Event::AcquireSession { app_name, stream_key } => {
                 self.authenticate(&app_name, &stream_key)?;
                 self.app_name = Some(app_name.clone());
                 let (request, response) = oneshot::channel();
-                self.session_manager.send(ManagerMessage::CreateSession((app_name, request)));
+                self.session_manager
+                    .send(ManagerMessage::CreateSession((app_name, request)))
+                    .map_err(|_| Error::SessionCreationFailed)?;
                 let session_sender = response.await.unwrap();
                 self.state = State::Publishing(session_sender);
             },
             Event::JoinSession { app_name, .. } => {
                 let (request, response) = oneshot::channel();
-                self.session_manager.send(ManagerMessage::JoinSession((app_name, request)));
-                self.state = if let Ok((session_sender, session_receiver)) = response.await {
-                    State::Playing(session_sender, session_receiver)
-                } else {
-                    State::Disconnecting
+                self.session_manager
+                    .send(ManagerMessage::JoinSession((app_name, request)))
+                    .map_err(|_| Error::SessionJoinFailed)?;
+
+                match response.await {
+                    Ok((session_sender, session_receiver)) => {
+                        self.state = State::Playing(session_sender, session_receiver);
+                    }
+                    Err(_) => self.state = State::Disconnecting,
                 }
             },
             Event::SendInitData { .. } => {
-                if let State::Playing(sender, _) = &mut self.state {
+                // TODO: better initialization handling
+                if let State::Playing(session, _) = &mut self.state {
                     let (request, response) = oneshot::channel();
-                    sender.send(Message::GetInitData(request));
-                    if let Ok((meta, video, audio)) = response.await {
-                        if let Some(packet) = meta {
-                            self.send_back(packet);
-                        }
+                    session
+                        .send(Message::GetInitData(request))
+                        .map_err(|_| Error::SessionSendFailed)?;
 
-                        if let Some(packet) = audio {
-                            self.send_back(packet);
-                        }
-
-                        if let Some(packet) = video {
-                            self.send_back(packet);
-                        }
+                    if let Ok((Some(meta), Some(video), Some(audio))) = response.await {
+                        self.send_back(meta);
+                        self.send_back(video);
+                        self.send_back(audio);
                     }
                 }
             }
             Event::ReleaseSession => {
                 let app_name = self.app_name.clone().unwrap();
-                if let State::Publishing(session_handle) = &mut self.state {
-                    session_handle.send(Message::Disconnect);
+                if let State::Publishing(session) = &mut self.state {
+                    session.send(Message::Disconnect).map_err(|_| Error::SessionSendFailed)?;
                 }
-                self.session_manager.send(ManagerMessage::ReleaseSession(app_name));
+                self.session_manager
+                    .send(ManagerMessage::ReleaseSession(app_name))
+                    .map_err(|_| Error::SessionReleaseFailed)?;
                 self.state = State::Disconnecting;
             }
             Event::LeaveSession => {

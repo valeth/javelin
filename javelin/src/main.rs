@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     let mut handles = Vec::new();
 
     let session = session::Manager::new();
-    let session_handle = session.sender();
+    let session_handle = session.handle();
     handles.push(tokio::spawn({
         session.run()
     }));

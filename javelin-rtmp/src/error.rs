@@ -1,32 +1,12 @@
 use {
     std::io,
     thiserror::Error,
+    crate::proto::Error as ProtocolError,
 };
 
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("RTMP handshake failed")]
-    HandshakeFailed,
-
-    #[error("RTMP session initialization failed")]
-    SessionInitializationFailed,
-
-    #[error("Tried to use RTMP session while not initialized")]
-    SessionNotInitialized,
-
-    #[error("Received invalid input")]
-    InvalidInput,
-
-    #[error("RTMP request was not accepted")]
-    RequestRejected,
-
-    #[error("No stream ID")]
-    NoStreamId,
-
-    #[error("Application name cannot be empty")]
-    EmptyAppName,
-
     #[error("Stream key \"{0}\" is not permitted")]
     StreamKeyNotPermitted(String),
 
@@ -35,4 +15,19 @@ pub enum Error {
 
     #[error("Client disconnected: {0}")]
     Disconnected(#[from] io::Error),
+
+    #[error("Failed to create new session")]
+    SessionCreationFailed,
+
+    #[error("Failed to release session")]
+    SessionReleaseFailed,
+
+    #[error("Failed to join session")]
+    SessionJoinFailed,
+
+    #[error("Failed to send to session")]
+    SessionSendFailed,
+
+    #[error(transparent)]
+    ProtocolError(#[from] ProtocolError),
 }
