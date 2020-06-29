@@ -24,4 +24,4 @@ path = "../javelin-codec"
 [dependencies.tokio]
 version = "0.2.21"
 default-features = false
-features = ["stream", "sync", "time"]
+features = ["rt-threaded", "stream", "sync", "time"]

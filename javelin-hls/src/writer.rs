@@ -25,7 +25,7 @@ use {
 
 
 pub struct Writer {
-    receiver: session::Receiver,
+    watcher: session::Watcher,
     write_interval: u64,
     next_write: u64,
     last_keyframe: u64,
@@ -38,7 +38,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn create(app_name: String, receiver: session::Receiver, fcleaner_sender: file_cleaner::Sender, config: &Config) -> Result<Self> {
+    pub fn create(app_name: String, watcher: session::Watcher, fcleaner_sender: file_cleaner::Sender, config: &Config) -> Result<Self> {
         let write_interval = 2000; // milliseconds
         let next_write = write_interval; // milliseconds
 
@@ -49,7 +49,7 @@ impl Writer {
         prepare_stream_directory(&stream_path)?;
 
         Ok(Self {
-            receiver,
+            watcher,
             write_interval,
             next_write,
             last_keyframe: 0,
@@ -63,8 +63,8 @@ impl Writer {
     }
 
     pub async fn run(mut self) -> Result<()> {
-        while let Some(message) = self.receiver.recv().await {
-            self.handle_message(message).map_err(|why| log::error!("{:?}", why)).unwrap();
+        while let Ok(packet) = self.watcher.recv().await {
+            self.handle_packet(packet).map_err(|why| log::error!("{:?}", why)).unwrap();
         }
 
         Ok(())
@@ -144,13 +144,6 @@ impl Writer {
         }
 
         Ok(())
-    }
-
-    fn handle_message(&mut self, message: session::Message) -> Result<()> {
-        match message {
-            session::Message::Packet(packet) => self.handle_packet(packet),
-            _ => Ok(())
-        }
     }
 
     fn handle_packet(&mut self, packet: Packet) -> Result<()> {

@@ -9,8 +9,7 @@ use {
         net::{TcpListener, TcpStream},
     },
     javelin_core::{
-        session::Trigger as HlsTrigger,
-        shared::Shared,
+        session::ManagerSender,
     },
     super::{Peer, Error, Config},
 };
@@ -26,19 +25,17 @@ type ClientId = u64;
 
 
 pub struct Service {
-    shared: Shared,
     client_id: AtomicUsize,
     config: Config,
-    hls_handle: HlsTrigger, // TODO: move this to session when implemented
+    session_manager: ManagerSender,
 }
 
 impl Service {
-    pub fn new(shared: Shared, hls_handle: HlsTrigger, config: Config) -> Self {
+    pub fn new(session_manager: ManagerSender, config: Config) -> Self {
         Self {
-            shared,
             config,
             client_id: AtomicUsize::default(),
-            hls_handle,
+            session_manager,
         }
     }
 
@@ -51,7 +48,7 @@ impl Service {
         loop {
             match listener.accept().await {
                 Ok((tcp_stream, _addr)) => {
-                    spawner(self.client_id(), tcp_stream, self.shared.clone(), self.hls_handle.clone(), self.config.clone());
+                    spawner(self.client_id(), tcp_stream, self.session_manager.clone(), self.config.clone());
                     self.increment_client_id();
                 },
                 Err(why) => log::error!("{}", why),
@@ -69,11 +66,11 @@ impl Service {
 }
 
 
-fn process<S>(id: u64, stream: S, shared: &Shared, hls_handle: HlsTrigger, config: Config)
+fn process<S>(id: u64, stream: S, session_manager: ManagerSender, config: Config)
     where S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static
 {
     log::info!("New client connection: {}", id);
-    let peer = Peer::new(id, stream, shared.clone(), hls_handle, config);
+    let peer = Peer::new(id, stream, session_manager, config);
 
     tokio::spawn(async move {
         if let Err(err) = peer.run().await {
@@ -86,11 +83,11 @@ fn process<S>(id: u64, stream: S, shared: &Shared, hls_handle: HlsTrigger, confi
 }
 
 #[cfg(not(feature = "rtmps"))]
-fn spawner(id: u64, stream: TcpStream, shared: Shared, hls_handle: HlsTrigger, config: Config) {
+fn spawner(id: u64, stream: TcpStream, session_manager: ManagerSender, config: Config) {
     stream.set_keepalive(Some(Duration::from_secs(30)))
         .expect("Failed to set TCP keepalive");
 
-    process(id, stream, &shared, hls_handle, config);
+    process(id, stream, session_manager, config);
 }
 
 #[cfg(feature = "rtmps")]

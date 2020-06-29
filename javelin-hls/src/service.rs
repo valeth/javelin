@@ -2,30 +2,26 @@ use {
     std::{fs, path::Path},
     anyhow::{Result, bail},
     warp::Filter,
-    javelin_core::session,
+    javelin_core::session::{self, ManagerMessage},
     super::{file_cleaner, writer::Writer, Config},
 };
 
 
 pub struct Service {
     config: Config,
-    trigger: session::Trigger,
-    on_trigger: session::OnTrigger,
+    session_manager: session::ManagerSender,
 }
 
 
 impl Service {
-    pub fn new(config: Config) -> Self {
-        let (trigger, on_trigger) = session::trigger_channel();
-
+    pub fn new(session_manager: session::ManagerSender, config: Config) -> Self {
         Self {
             config,
-            trigger,
-            on_trigger,
+            session_manager,
         }
     }
 
-    pub async fn run(mut self)  {
+    pub async fn run(self)  {
         let hls_root = self.config.root_dir.clone();
         log::info!("HLS directory located at '{}'", hls_root.display());
 
@@ -51,15 +47,12 @@ impl Service {
             });
         }
 
-        while let Some((app_name, request)) = self.on_trigger.recv().await {
-            let (sender, receiver) = session::channel();
+        let (trigger, mut trigger_handle) = session::trigger_channel();
 
-            if request.send(sender).is_err() {
-                log::error!("Failed to send response message to session");
-                continue;
-            }
+        self.session_manager.send(ManagerMessage::RegisterTrigger("create_session", trigger));
 
-            match Writer::create(app_name, receiver, fcleaner_sender.clone(), &self.config) {
+        while let Some((app_name, watcher)) = trigger_handle.recv().await {
+            match Writer::create(app_name, watcher, fcleaner_sender.clone(), &self.config) {
                 Ok(writer) => {
                     tokio::spawn(async move {
                         writer.run().await.unwrap()
@@ -68,10 +61,6 @@ impl Service {
                 Err(why) => log::error!("Failed to create writer: {:?}", why),
             }
         }
-    }
-
-    pub fn trigger_handle(&self) -> session::Trigger {
-        self.trigger.clone()
     }
 }
 

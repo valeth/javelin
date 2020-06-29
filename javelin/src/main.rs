@@ -8,7 +8,7 @@ mod args;
 
 use {
     anyhow::Result,
-    javelin_core::shared::Shared,
+    javelin_core::session,
     self::config::load_config,
 };
 
@@ -23,17 +23,18 @@ async fn main() -> Result<()> {
     let config_dir = args.value_of("config_dir").unwrap_or_default();
 
     let config = load_config(config_dir)?;
-    let shared = Shared::new();
 
-    let hls_service = javelin_hls::Service::new(config.hls.clone());
-    let hls_handle = hls_service.trigger_handle();
-    tokio::spawn(hls_service.run());
+    let session = session::Manager::new();
+    let session_handle = session.sender();
+    tokio::spawn({
+        session.run()
+    });
 
-    // because we have to move them
-    let agh = config.rtmp.clone();
-    let ugh = shared.clone();
-    // TODO: remove handle from RTMP and move to session
-    javelin_rtmp::Service::new(ugh, hls_handle, agh).run().await;
+    tokio::spawn({
+        javelin_hls::Service::new(session_handle.clone(), config.hls.clone()).run()
+    });
+
+    javelin_rtmp::Service::new(session_handle, config.rtmp).run().await;
 
     Ok(())
 }
@@ -50,6 +51,7 @@ fn init_logger() -> Result<()> {
         .level(LevelFilter::Info)
         .level_for("javelin", LevelFilter::Debug)
         .level_for("javelin_rtmp", LevelFilter::Debug)
+        .level_for("javelin_hls", LevelFilter::Debug)
         .level_for("javelin_types", LevelFilter::Debug)
         .level_for("javelin_core", LevelFilter::Debug)
         .level_for("javelin_codec", LevelFilter::Warn)
