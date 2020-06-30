@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     let config = config::from_path(config_dir)?;
     let mut handles = Vec::new();
 
-    let session = session::Manager::new();
+    let session = session::Manager::new(&config);
     let session_handle = session.handle();
     handles.push(tokio::spawn({
         session.run()

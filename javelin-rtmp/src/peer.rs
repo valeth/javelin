@@ -116,11 +116,10 @@ impl<S> Peer<S>
                 }
             },
             Event::AcquireSession { app_name, stream_key } => {
-                self.authenticate(&app_name, &stream_key)?;
                 self.app_name = Some(app_name.clone());
                 let (request, response) = oneshot::channel();
                 self.session_manager
-                    .send(ManagerMessage::CreateSession((app_name, request)))
+                    .send(ManagerMessage::CreateSession((app_name, stream_key, request)))
                     .map_err(|_| Error::SessionCreationFailed)?;
                 let session_sender = response.await.unwrap();
                 self.state = State::Publishing(session_sender);
@@ -154,15 +153,6 @@ impl<S> Peer<S>
                 }
             }
             Event::ReleaseSession | Event::LeaveSession => self.disconnect()?,
-        }
-
-        Ok(())
-    }
-
-    #[allow(clippy::ptr_arg)]
-    fn authenticate(&self, app: &str, key: &String) -> Result<(), Error> {
-        if key.is_empty() || self.config.stream_keys.get(app) != Some(key) {
-            return Err(Error::StreamKeyNotPermitted(key.to_string()));
         }
 
         Ok(())

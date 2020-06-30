@@ -9,6 +9,7 @@ use {
         instance::{Session, Handle, Watcher, OutgoingBroadcast},
         transport::Responder,
     },
+    crate::Config,
 };
 
 
@@ -23,12 +24,13 @@ pub fn trigger_channel() -> (Trigger, TriggerHandle) {
 pub type ManagerHandle = mpsc::UnboundedSender<ManagerMessage>;
 type ManagerReceiver = mpsc::UnboundedReceiver<ManagerMessage>;
 type Event = &'static str;
-
+type AppName = String;
+type StreamKey = String;
 
 pub enum ManagerMessage {
-    CreateSession((String, Responder<Handle>)),
-    ReleaseSession(String),
-    JoinSession((String, Responder<(Handle, Watcher)>)),
+    CreateSession((AppName, StreamKey, Responder<Handle>)),
+    ReleaseSession(AppName),
+    JoinSession((AppName, Responder<(Handle, Watcher)>)),
     RegisterTrigger(Event, Trigger),
 }
 
@@ -36,17 +38,23 @@ pub enum ManagerMessage {
 pub struct Manager {
     handle: ManagerHandle,
     incoming: ManagerReceiver,
-    sessions: Arc<RwLock<HashMap<String, (Handle, OutgoingBroadcast)>>>,
+    stream_keys: Arc<RwLock<HashMap<AppName, StreamKey>>>,
+    sessions: Arc<RwLock<HashMap<AppName, (Handle, OutgoingBroadcast)>>>,
     triggers: Arc<RwLock<HashMap<Event, Vec<Trigger>>>>,
 }
 
 impl Manager {
-    pub fn new() -> Self {
+    pub fn new(config: &Config) -> Self {
         let (handle, incoming) = mpsc::unbounded_channel();
         let sessions = Arc::new(RwLock::new(HashMap::new()));
         let triggers = Arc::new(RwLock::new(HashMap::new()));
 
-        Self { handle, incoming, sessions, triggers }
+        let stream_keys = config
+            .get("stream_keys")
+            .map(|v| Arc::new(RwLock::new(v)))
+            .unwrap_or_default();
+
+        Self { handle, incoming, sessions, triggers, stream_keys }
     }
 
     pub fn handle(&self) -> ManagerHandle {
@@ -55,7 +63,8 @@ impl Manager {
 
     async fn process_message(&mut self, message: ManagerMessage) -> Result<()> {
         match message {
-            ManagerMessage::CreateSession((name, responder)) => {
+            ManagerMessage::CreateSession((name, key, responder)) => {
+                self.authenticate(&name, &key).await?;
                 let (handle, incoming) = mpsc::unbounded_channel();
                 let (outgoing, _watcher) = broadcast::channel(64);
                 let mut sessions = self.sessions.write().await;
@@ -108,4 +117,18 @@ impl Manager {
             };
         }
     }
+
+    async fn authenticate(&self, app_name: &str, stream_key: &str) -> Result<()> {
+        if stream_key.is_empty() {
+            bail!("Stream key can not be empty");
+        }
+
+        let stream_keys = self.stream_keys.read().await;
+        if stream_keys.get(app_name) != Some(&stream_key.to_string()) {
+            bail!("Stream key {} not permitted for {}", stream_key, app_name);
+        }
+
+        Ok(())
+    }
+
 }
