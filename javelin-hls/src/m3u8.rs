@@ -3,7 +3,7 @@ use {
     m3u8_rs::playlist::{MediaPlaylist, MediaSegment},
     tempfile::NamedTempFile,
     anyhow::Result,
-    super::file_cleaner,
+    crate::file_cleaner,
 };
 
 #[cfg(unix)]

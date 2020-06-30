@@ -1,9 +1,7 @@
 use {
-    javelin_types::Metadata,
-    rml_rtmp::{
-        sessions::StreamMetadata,
-    },
     std::collections::HashMap,
+    javelin_types::Metadata,
+    rml_rtmp::sessions::StreamMetadata,
 };
 
 // Temporary conversion functions

@@ -10,8 +10,12 @@ use {
         prelude::*,
         net::TcpListener,
     },
-    javelin_core::session,
-    crate::{peer::Peer, Error, Config},
+    javelin_core::{session, Config},
+    crate::{
+        config::Config as RtmpConfig,
+        peer::Peer,
+        Error,
+    },
 };
 
 #[cfg(feature = "rtmps")]
@@ -43,12 +47,13 @@ impl From<&ClientId> for u64 {
 
 
 pub struct Service {
-    config: Config,
+    config: RtmpConfig,
     session_manager: session::ManagerHandle,
 }
 
 impl Service {
-    pub fn new(session_manager: session::ManagerHandle, config: Config) -> Self {
+    pub fn new(session_manager: session::ManagerHandle, config: &Config) -> Self {
+        let config = config.get("rtmp").unwrap_or_default();
         Self {
             config,
             session_manager,
@@ -73,7 +78,7 @@ impl Service {
 }
 
 
-async fn handle_rtmp(client_id: &ClientId, session_manager: &session::ManagerHandle, config: &Config) -> Result<()> {
+async fn handle_rtmp(client_id: &ClientId, session_manager: &session::ManagerHandle, config: &RtmpConfig) -> Result<()> {
     let addr = &config.addr;
     let mut listener = TcpListener::bind(addr).await?;
     log::info!("Listening for RTMP connections on {}", addr);
@@ -86,7 +91,7 @@ async fn handle_rtmp(client_id: &ClientId, session_manager: &session::ManagerHan
     }
 }
 
-pub(crate) fn process<S>(id: &ClientId, stream: S, session_manager: &session::ManagerHandle, config: &Config)
+pub(crate) fn process<S>(id: &ClientId, stream: S, session_manager: &session::ManagerHandle, config: &RtmpConfig)
     where S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static
 {
     log::info!("New client connection: {}", id);
@@ -104,7 +109,7 @@ pub(crate) fn process<S>(id: &ClientId, stream: S, session_manager: &session::Ma
 }
 
 #[cfg(feature = "rtmps")]
-pub(crate) async fn handle_rtmps(client_id: &ClientId, session_manager: &session::ManagerHandle, config: &Config) -> Result<()> {
+pub(crate) async fn handle_rtmps(client_id: &ClientId, session_manager: &session::ManagerHandle, config: &RtmpConfig) -> Result<()> {
     if !config.tls.enabled {
         return Ok(())
     }

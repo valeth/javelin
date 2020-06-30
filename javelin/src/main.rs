@@ -2,14 +2,12 @@
 #![warn(rust_2018_idioms)]
 #![allow(elided_lifetimes_in_paths)]
 
-mod config;
 mod args;
 
 
 use {
     anyhow::Result,
-    javelin_core::session,
-    self::config::load_config,
+    javelin_core::{session, config},
 };
 
 
@@ -21,7 +19,7 @@ async fn main() -> Result<()> {
 
     let args = args::build();
     let config_dir = args.value_of("config_dir").unwrap_or_default();
-    let config = load_config(config_dir)?;
+    let config = config::from_path(config_dir)?;
     let mut handles = Vec::new();
 
     let session = session::Manager::new();
@@ -32,12 +30,12 @@ async fn main() -> Result<()> {
 
     #[cfg(feature = "hls")]
     handles.push(tokio::spawn({
-        javelin_hls::Service::new(session_handle.clone(), config.hls.clone()).run()
+        javelin_hls::Service::new(session_handle.clone(), &config).run()
     }));
 
     #[cfg(feature = "rtmp")]
     handles.push(tokio::spawn({
-         javelin_rtmp::Service::new(session_handle, config.rtmp).run()
+        javelin_rtmp::Service::new(session_handle, &config).run()
     }));
 
     // Wait for all spawned processes to complete

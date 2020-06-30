@@ -1,8 +1,5 @@
 use {
-    std::{
-        path::PathBuf,
-        fs,
-    },
+    std::{path::PathBuf, fs},
     tokio::{
         stream::StreamExt,
         sync::mpsc,

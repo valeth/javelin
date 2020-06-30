@@ -9,11 +9,11 @@ use {
     tokio_util::codec::{Framed, BytesCodec},
     javelin_types::{Packet, PacketType},
     javelin_core::session::{self, Message, ManagerMessage},
-    super::{
-        Config,
+    crate::{
+        config::Config,
         error::Error,
+        proto::{Protocol, Event},
     },
-    crate::proto::{Protocol, Event},
 };
 
 

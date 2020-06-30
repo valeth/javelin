@@ -16,10 +16,10 @@ use {
     },
     javelin_types::{Packet, PacketType},
     javelin_core::session,
-    super::{
+    crate::{
+        config::Config,
         file_cleaner,
         m3u8::Playlist,
-        Config,
     },
 };
 

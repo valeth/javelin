@@ -2,19 +2,27 @@ use {
     std::{fs, path::Path},
     anyhow::{Result, bail},
     warp::Filter,
-    javelin_core::session::{self, ManagerMessage},
-    super::{file_cleaner, writer::Writer, Config},
+    javelin_core::{
+        session::{self, ManagerMessage},
+        Config,
+    },
+    crate::{
+        config::Config as HlsConfig,
+        file_cleaner,
+        writer::Writer,
+    },
 };
 
 
 pub struct Service {
-    config: Config,
+    config: HlsConfig,
     session_manager: session::ManagerHandle,
 }
 
 
 impl Service {
-    pub fn new(session_manager: session::ManagerHandle, config: Config) -> Self {
+    pub fn new(session_manager: session::ManagerHandle, config: &Config) -> Self {
+        let config = config.get("hls").unwrap_or_default();
         Self {
             config,
             session_manager,
