@@ -49,86 +49,84 @@ impl From<&ClientId> for u64 {
 pub struct Service {
     config: RtmpConfig,
     session_manager: session::ManagerHandle,
+    client_id: ClientId,
 }
 
 impl Service {
     pub fn new(session_manager: session::ManagerHandle, config: &Config) -> Self {
-        let config = config.get("rtmp").unwrap_or_default();
         Self {
-            config,
             session_manager,
+            config: config.get("rtmp").unwrap_or_default(),
+            client_id: ClientId::default()
         }
     }
 
     pub async fn run(self) {
-        let client_id = ClientId::default();
-
         #[cfg(not(feature = "rtmps"))]
-        let res = handle_rtmp(&client_id, &self.session_manager, &self.config).await;
+        let res = self.handle_rtmp().await;
         #[cfg(feature = "rtmps")]
         let res = tokio::try_join!(
-            handle_rtmp(&client_id, &self.session_manager, &self.config),
-            handle_rtmps(&client_id, &self.session_manager, &self.config)
+            self.handle_rtmp(),
+            self.handle_rtmps()
         );
 
         if let Err(err) = res {
             log::error!("{}", err);
         }
     }
-}
 
+    async fn handle_rtmp(&self) -> Result<()> {
+        let addr = &self.config.addr;
+        let mut listener = TcpListener::bind(addr).await?;
+        log::info!("Listening for RTMP connections on {}", addr);
 
-async fn handle_rtmp(client_id: &ClientId, session_manager: &session::ManagerHandle, config: &RtmpConfig) -> Result<()> {
-    let addr = &config.addr;
-    let mut listener = TcpListener::bind(addr).await?;
-    log::info!("Listening for RTMP connections on {}", addr);
-
-    loop {
-        let (tcp_stream, _addr) = listener.accept().await?;
-        tcp_stream.set_keepalive(Some(Duration::from_secs(30)))?;
-        process(client_id, tcp_stream, &session_manager, &config);
-        client_id.increment();
-    }
-}
-
-pub(crate) fn process<S>(id: &ClientId, stream: S, session_manager: &session::ManagerHandle, config: &RtmpConfig)
-    where S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static
-{
-    log::info!("New client connection: {}", id);
-    let id = id.into();
-    let peer = Peer::new(id, stream, session_manager.clone(), config.clone());
-
-    tokio::spawn(async move {
-        if let Err(err) = peer.run().await {
-            match err {
-                Error::Disconnected(e) if e.kind() == IoErrorKind::ConnectionReset => (),
-                e => log::error!("{}", e)
-            }
+        loop {
+            let (tcp_stream, _addr) = listener.accept().await?;
+            tcp_stream.set_keepalive(Some(Duration::from_secs(30)))?;
+            self.process(tcp_stream);
+            self.client_id.increment();
         }
-    });
-}
-
-#[cfg(feature = "rtmps")]
-pub(crate) async fn handle_rtmps(client_id: &ClientId, session_manager: &session::ManagerHandle, config: &RtmpConfig) -> Result<()> {
-    if !config.tls.enabled {
-        return Ok(())
     }
 
-    let addr = &config.tls.addr;
-    let mut listener = TcpListener::bind(addr).await?;
-    log::info!("Listening for RTMPS connections on {}", addr);
+    #[cfg(feature = "rtmps")]
+    async fn handle_rtmps(&self) -> Result<()> {
+        if !self.config.tls.enabled {
+            return Ok(())
+        }
 
-    let tls_acceptor = {
-        let p12 = config.tls.read_cert()?;
-        let password = &config.tls.cert_password;
-        let cert = native_tls::Identity::from_pkcs12(&p12, password)?;
-        TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build()?)
-    };
+        let addr = &self.config.tls.addr;
+        let mut listener = TcpListener::bind(addr).await?;
+        log::info!("Listening for RTMPS connections on {}", addr);
 
-    loop {
-        let (tcp_stream, _addr) = listener.accept().await?;
-        tcp_stream.set_keepalive(Some(Duration::from_secs(30)))?;
-        let tls_stream = tls_acceptor.accept(tcp_stream).await?;
-        process(client_id, tls_stream, &session_manager, &config);
+        let tls_acceptor = {
+            let p12 = self.config.tls.read_cert()?;
+            let password = &self.config.tls.cert_password;
+            let cert = native_tls::Identity::from_pkcs12(&p12, password)?;
+            TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build()?)
+        };
+
+        loop {
+            let (tcp_stream, _addr) = listener.accept().await?;
+            tcp_stream.set_keepalive(Some(Duration::from_secs(30)))?;
+            let tls_stream = tls_acceptor.accept(tcp_stream).await?;
+            self.process(tls_stream);
+        }
+    }
+
+    fn process<S>(&self, stream: S)
+        where S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static
+    {
+        log::info!("New client connection: {}", &self.client_id);
+        let id = (&self.client_id).into();
+        let peer = Peer::new(id, stream, self.session_manager.clone(), self.config.clone());
+
+        tokio::spawn(async move {
+            if let Err(err) = peer.run().await {
+                match err {
+                    Error::Disconnected(e) if e.kind() == IoErrorKind::ConnectionReset => (),
+                    e => log::error!("{}", e)
+                }
+            }
+        });
     }
 }
