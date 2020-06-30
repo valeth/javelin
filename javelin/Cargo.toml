@@ -16,13 +16,24 @@ anyhow = "^1.0"
 log = { version = "^0.4", features = ["max_level_debug", "release_max_level_info"] }
 fern = { version = "^0.6", features = ["colored"] }
 clap = { version = "~2.33", features = ["wrap_help"] }
-chrono = { version = "^0.4" }
-javelin-core = { version = "0.4.0", path = "../javelin-core" }
+chrono = "^0.4"
+serde = { version = "^1.0", features = ["derive"] }
+r2d2 = { version = "0.8.8", optional = true }
+r2d2_sqlite = { version = "0.16.0", optional = true }
+mongodb = { version = "1.0.0", optional = true }
 
 [dependencies.tokio]
 version = "0.2"
 default-features = false
 features = ["rt-threaded", "macros", "time"]
+
+[dependencies.javelin-core]
+version = "0.4.0"
+path = "../javelin-core"
+
+[dependencies.javelin-types]
+version = "0.4.0"
+path = "../javelin-types"
 
 [dependencies.javelin-rtmp]
 version = "0.4.0"
@@ -36,7 +47,9 @@ path = "../javelin-hls"
 
 
 [features]
-default = ["rtmp", "hls"]
+default = ["rtmp", "hls", "db-mongo"]
 rtmp = ["javelin-rtmp"]
 rtmps = ["javelin-rtmp/rtmps"]
 hls = ["javelin-hls"]
+db-sqlite = ["r2d2", "r2d2_sqlite"]
+db-mongo = ["mongodb"]

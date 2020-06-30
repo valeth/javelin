@@ -3,11 +3,13 @@
 #![allow(elided_lifetimes_in_paths)]
 
 mod args;
+mod database;
 
 
 use {
     anyhow::Result,
     javelin_core::{session, config},
+    database::Database,
 };
 
 
@@ -22,7 +24,9 @@ async fn main() -> Result<()> {
     let config = config::from_path(config_dir)?;
     let mut handles = Vec::new();
 
-    let session = session::Manager::new(&config);
+    let database_handle = Database::new(&config).await;
+
+    let session = session::Manager::new(database_handle.clone());
     let session_handle = session.handle();
     handles.push(tokio::spawn({
         session.run()

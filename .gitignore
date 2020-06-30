@@ -10,6 +10,7 @@
 /.vscode
 
 # Misc
+/db
 /cert*
 /.env*
 /tmp

@@ -5,11 +5,11 @@ use {
     },
     anyhow::{Result, bail},
     tokio::sync::{broadcast, mpsc, RwLock},
+    javelin_types::models::UserRepository,
     super::{
         instance::{Session, Handle, Watcher, OutgoingBroadcast},
         transport::Responder,
     },
-    crate::Config,
 };
 
 
@@ -35,26 +35,25 @@ pub enum ManagerMessage {
 }
 
 
-pub struct Manager {
+pub struct Manager<D>
+    where D: UserRepository + Send + Sync + 'static
+{
     handle: ManagerHandle,
     incoming: ManagerReceiver,
-    stream_keys: Arc<RwLock<HashMap<AppName, StreamKey>>>,
+    user_repo: Arc<D>,
     sessions: Arc<RwLock<HashMap<AppName, (Handle, OutgoingBroadcast)>>>,
     triggers: Arc<RwLock<HashMap<Event, Vec<Trigger>>>>,
 }
 
-impl Manager {
-    pub fn new(config: &Config) -> Self {
+impl<D> Manager<D>
+    where D: UserRepository + Send + Sync + 'static
+{
+    pub fn new(user_repo: D) -> Self {
         let (handle, incoming) = mpsc::unbounded_channel();
         let sessions = Arc::new(RwLock::new(HashMap::new()));
         let triggers = Arc::new(RwLock::new(HashMap::new()));
 
-        let stream_keys = config
-            .get("stream_keys")
-            .map(|v| Arc::new(RwLock::new(v)))
-            .unwrap_or_default();
-
-        Self { handle, incoming, sessions, triggers, stream_keys }
+        Self { handle, incoming, sessions, triggers, user_repo: Arc::new(user_repo) }
     }
 
     pub fn handle(&self) -> ManagerHandle {
@@ -123,12 +122,10 @@ impl Manager {
             bail!("Stream key can not be empty");
         }
 
-        let stream_keys = self.stream_keys.read().await;
-        if stream_keys.get(app_name) != Some(&stream_key.to_string()) {
+        if !self.user_repo.user_has_key(app_name, stream_key).await {
             bail!("Stream key {} not permitted for {}", stream_key, app_name);
         }
 
         Ok(())
     }
-
 }
