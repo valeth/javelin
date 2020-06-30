@@ -16,4 +16,6 @@ pub trait UserRepository {
 
         false
     }
+
+    async fn add_user_with_key(&mut self, name: &str, key: &str);
 }

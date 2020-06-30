@@ -42,4 +42,10 @@ impl UserRepository for Database {
             })
             .ok()
     }
+
+    async fn add_user_with_key(&mut self, name: &str, key: &str) {
+        let conn = self.pool.get().unwrap();
+        let mut stmt = conn.prepare("INSERT INTO users (name, key) VALUES (?, ?);").unwrap();
+        stmt.execute(&[name, key]).expect("Failed to add user and key");
+    }
 }

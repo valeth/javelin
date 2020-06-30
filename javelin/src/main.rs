@@ -4,11 +4,15 @@
 
 mod args;
 mod database;
+mod management;
 
 
 use {
     anyhow::Result,
-    javelin_core::{session, config},
+    javelin_core::{
+        session,
+        config::{self, Config},
+    },
     database::Database,
 };
 
@@ -22,6 +26,21 @@ async fn main() -> Result<()> {
     let args = args::build();
     let config_dir = args.value_of("config_dir").unwrap_or_default();
     let config = config::from_path(config_dir)?;
+
+    match args.subcommand() {
+        ("run", _) => {
+            run_app(&config).await?;
+        },
+        ("permit-stream", Some(args)) => {
+            management::permit_stream(args, &config).await?;
+        },
+        _ => ()
+    }
+
+    Ok(())
+}
+
+async fn run_app(config: &Config) -> Result<()> {
     let mut handles = Vec::new();
 
     let database_handle = Database::new(&config).await;

@@ -127,4 +127,11 @@ impl UserRepository for Database {
                 User { name: name.to_string(), key: key.to_string() }
             })
     }
+
+    async fn add_user_with_key(&mut self, name: &str, key: &str) {
+        let db = self.client.database(&self.config.dbname);
+        db.collection("users")
+            .insert_one(doc! { "name": name, "key": key }, None).await
+            .expect("Failed to insert user and key");
+    }
 }

@@ -47,7 +47,7 @@ path = "../javelin-hls"
 
 
 [features]
-default = ["rtmp", "hls", "db-mongo"]
+default = ["rtmp", "hls", "db-sqlite"]
 rtmp = ["javelin-rtmp"]
 rtmps = ["javelin-rtmp/rtmps"]
 hls = ["javelin-hls"]
