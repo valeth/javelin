@@ -40,7 +40,7 @@ pub struct Manager<D>
 {
     handle: ManagerHandle,
     incoming: ManagerReceiver,
-    user_repo: Arc<D>,
+    user_repo: D,
     sessions: Arc<RwLock<HashMap<AppName, (Handle, OutgoingBroadcast)>>>,
     triggers: Arc<RwLock<HashMap<Event, Vec<Trigger>>>>,
 }
@@ -53,7 +53,7 @@ impl<D> Manager<D>
         let sessions = Arc::new(RwLock::new(HashMap::new()));
         let triggers = Arc::new(RwLock::new(HashMap::new()));
 
-        Self { handle, incoming, sessions, triggers, user_repo: Arc::new(user_repo) }
+        Self { handle, incoming, sessions, triggers, user_repo }
     }
 
     pub fn handle(&self) -> ManagerHandle {
