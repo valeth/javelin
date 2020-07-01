@@ -27,7 +27,7 @@ variables:
 
 .toolchain-env: &toolchain-env
   - apt-get update
-  - apt-get install -y --no-install-recommends ca-certificates libssl-dev libc6-dev pkg-config gcc
+  - apt-get install -y --no-install-recommends ca-certificates libssl-dev libc6-dev libsqlite3-dev pkg-config gcc
   - export PATH="$CARGO_HOME/bin:$PATH"
 
 .toolchain-stable:
