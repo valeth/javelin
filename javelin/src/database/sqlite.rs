@@ -1,10 +1,10 @@
 use {
     std::path::PathBuf,
     r2d2::Pool,
-    r2d2_sqlite::SqliteConnectionManager,
+    r2d2_sqlite::{SqliteConnectionManager, rusqlite::OptionalExtension},
     javelin_types::{
         async_trait,
-        models::{UserRepository, User},
+        models::{UserRepository, User, Error},
     },
     javelin_core::Config,
 };
@@ -31,21 +31,35 @@ impl Database {
 
 #[async_trait]
 impl UserRepository for Database {
-    async fn user_by_name(&self, name: &str) -> Option<User> {
-        let conn = self.pool.get().unwrap();
-        let mut stmt = conn.prepare("SELECT name, key FROM users WHERE name=?").unwrap();
+    async fn user_by_name(&self, name: &str) -> Result<Option<User>, Error> {
+        let conn = self.pool.get()
+            .map_err(|_| Error::LookupFailed)?;
+
+        let mut stmt = conn
+            .prepare("SELECT name, key FROM users WHERE name=?")
+            .map_err(|_| Error::LookupFailed)?;
+
         stmt.query_row(&[name], |row| {
                 Ok(User {
                     name: row.get(0)?,
                     key: row.get(1)?
                 })
             })
-            .ok()
+            .optional()
+            .map_err(|_| Error::LookupFailed)
     }
 
-    async fn add_user_with_key(&mut self, name: &str, key: &str) {
-        let conn = self.pool.get().unwrap();
-        let mut stmt = conn.prepare("INSERT INTO users (name, key) VALUES (?, ?);").unwrap();
-        stmt.execute(&[name, key]).expect("Failed to add user and key");
+    async fn add_user_with_key(&mut self, name: &str, key: &str) -> Result<(), Error> {
+        let conn = self.pool.get()
+            .map_err(|_| Error::UpdateFailed)?;
+
+        let mut stmt = conn
+            .prepare("SELECT name, key FROM users WHERE name=?")
+            .map_err(|_| Error::UpdateFailed)?;
+
+        stmt.execute(&[name, key])
+            .map_err(|_| Error::UpdateFailed)?;
+
+        Ok(())
     }
 }

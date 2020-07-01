@@ -6,7 +6,7 @@ use {
     anyhow::Result,
     javelin_types::{
         async_trait,
-        models::{UserRepository, User},
+        models::{UserRepository, User, Error},
     },
     serde::Deserialize,
     javelin_core::Config,
@@ -115,23 +115,28 @@ async fn initialize_collections(client: &Client, dbname: &str) -> Result<()> {
 
 #[async_trait]
 impl UserRepository for Database {
-    async fn user_by_name(&self, name: &str) -> Option<User> {
+    async fn user_by_name(&self, name: &str) -> Result<Option<User>, Error> {
         let db = self.client.database(&self.config.dbname);
-        db.collection("users")
+        let res = db
+            .collection("users")
             .find_one(doc!{ "name": name }, None).await
-            .expect("Failed to fetch user")
-            .map(|doc| {
-                log::debug!("Found user");
-                let key = doc.get_str("key").expect("User didn't have a key");
-                log::debug!("Got key {}", key);
-                User { name: name.to_string(), key: key.to_string() }
-            })
+            .map_err(|_| Error::LookupFailed)?;
+
+        if let Some(doc) = res {
+            let key = doc.get_str("key").map_err(|_| Error::LookupFailed)?;
+            return Ok(Some(User { name: name.to_string(), key: key.to_string() }));
+        }
+
+        Ok(None)
     }
 
-    async fn add_user_with_key(&mut self, name: &str, key: &str) {
+    async fn add_user_with_key(&mut self, name: &str, key: &str) -> Result<(), Error> {
         let db = self.client.database(&self.config.dbname);
+
         db.collection("users")
             .insert_one(doc! { "name": name, "key": key }, None).await
-            .expect("Failed to insert user and key");
+            .map_err(|_| Error::UpdateFailed)?;
+
+        Ok(())
     }
 }

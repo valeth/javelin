@@ -122,7 +122,7 @@ impl<D> Manager<D>
             bail!("Stream key can not be empty");
         }
 
-        if !self.user_repo.user_has_key(app_name, stream_key).await {
+        if !self.user_repo.user_has_key(app_name, stream_key).await? {
             bail!("Stream key {} not permitted for {}", stream_key, app_name);
         }
 

@@ -1,9 +1,5 @@
-#[cfg(feature = "db-sqlite")]
-mod sqlite;
-#[cfg(feature = "db-sqlite")]
-pub use sqlite::Database;
+#[cfg_attr(all(feature = "db-sqlite", not(feature = "db-mongo")), path = "database/sqlite.rs")]
+#[cfg_attr(all(feature = "db-mongo", not(feature = "db-sqlite")), path = "database/mongo.rs")]
+mod backend;
 
-#[cfg(feature = "db-mongo")]
-mod mongo;
-#[cfg(feature = "db-mongo")]
-pub use mongo::Database;
+pub use backend::Database;

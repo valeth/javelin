@@ -1,4 +1,18 @@
-use crate::async_trait;
+use {
+    thiserror::Error,
+    crate::async_trait,
+};
+
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Database lookup failed")]
+    LookupFailed,
+
+    #[error("Database update failed")]
+    UpdateFailed,
+}
+
 
 pub struct User {
     pub name: String,
@@ -7,15 +21,15 @@ pub struct User {
 
 #[async_trait]
 pub trait UserRepository {
-    async fn user_by_name(&self, name: &str) -> Option<User>;
+    async fn user_by_name(&self, name: &str) -> Result<Option<User>, Error>;
 
-    async fn user_has_key(&self, name: &str, key: &str) -> bool {
-        if let Some(user) = self.user_by_name(name).await {
-            return &user.key == key
+    async fn add_user_with_key(&mut self, name: &str, key: &str) -> Result<(), Error>;
+
+    async fn user_has_key(&self, name: &str, key: &str) -> Result<bool, Error> {
+        if let Some(user) = self.user_by_name(name).await? {
+            return Ok(&user.key == key)
         }
 
-        false
+        Ok(false)
     }
-
-    async fn add_user_with_key(&mut self, name: &str, key: &str);
 }
