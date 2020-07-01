@@ -28,11 +28,11 @@ async fn main() -> Result<()> {
     let config = config::from_path(config_dir)?;
 
     match args.subcommand() {
-        ("run", _) => {
-            run_app(&config).await?;
-        },
         ("permit-stream", Some(args)) => {
             management::permit_stream(args, &config).await?;
+        },
+        ("run", _) | ("", _) => {
+            run_app(&config).await?;
         },
         _ => ()
     }

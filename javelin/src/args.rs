@@ -22,8 +22,8 @@ pub fn build<'a>() -> ArgMatches<'a> {
         .subcommand(SubCommand::with_name("run"))
         .subcommand(SubCommand::with_name("permit-stream")
             .arg(Arg::with_name("user").required(true))
-            .arg(Arg::with_name("key").required(true)))
-        .get_matches()
+            .arg(Arg::with_name("key").required(true))
+        ).get_matches()
 }
 
 fn capitalize(string: &str) -> String {
