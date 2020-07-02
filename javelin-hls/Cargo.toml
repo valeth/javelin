@@ -1,9 +1,10 @@
 [package]
 name = "javelin-hls"
-version = "0.4.0"
+version = "0.4.0-dev.1"
 authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 license = "GPL-3.0"
 edition = "2018"
+
 
 [dependencies]
 log = "^0.4"
@@ -13,15 +14,15 @@ chrono = "^0.4"
 m3u8-rs = "1.0"
 tempfile = "3.1"
 warp = { version = "0.2.3", default-features = false }
-javelin-types = { version = "0.4.0", path = "../javelin-types" }
-javelin-core = { version = "0.4.0", path = "../javelin-core" }
+javelin-types = { version = "0.4.0-dev.1", path = "../javelin-types" }
+javelin-core = { version = "0.4.0-dev.1", path = "../javelin-core" }
 
 [dependencies.javelin-codec]
-version = "0.4.0"
+version = "0.4.0-dev.1"
 features = ["mpegts"]
 path = "../javelin-codec"
 
 [dependencies.tokio]
 version = "0.2.21"
 default-features = false
-features = ["rt-threaded", "stream", "sync", "time"]
+features = ["rt-core", "stream", "sync", "time"]

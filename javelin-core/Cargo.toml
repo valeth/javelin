@@ -5,15 +5,13 @@ description = "Simple streaming server (core)"
 keywords = ["live-streaming"]
 license = "GPL-3.0"
 repository = "https://gitlab.com/valeth/javelin.git"
-version = "0.4.0"
+version = "0.4.0-dev.1"
 edition = "2018"
 
 
 [dependencies]
-thiserror = "^1.0"
 anyhow = "^1.0"
 log = "^0.4"
-serde = { version = "^1.0", features = ["derive"] }
 
 [dependencies.config]
 version = "0.10.1"
@@ -23,8 +21,8 @@ features = ["yaml"]
 [dependencies.tokio]
 version = "0.2.21"
 default-features = false
-features = ["rt-threaded", "sync"]
+features = ["rt-core", "sync"]
 
 [dependencies.javelin-types]
-version = "0.4.0"
+version = "0.4.0-dev.1"
 path = "../javelin-types"

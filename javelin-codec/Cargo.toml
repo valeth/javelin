@@ -5,8 +5,13 @@ description = "Codecs for the Javelin streaming server"
 keywords = ["video", "audio", "codec"]
 license = "GPL-3.0"
 repository = "https://gitlab.com/valeth/javelin.git"
-version = "0.4.0"
+version = "0.4.0-dev.1"
 edition = "2018"
+
+
+[features]
+default = []
+mpegts = ["mpeg2ts"]
 
 
 [dependencies]
@@ -14,8 +19,3 @@ bytes = "^0.5"
 log = "^0.4"
 thiserror = "^1.0"
 mpeg2ts = { version = "0.1", optional = true }
-
-
-[features]
-default = []
-mpegts = ["mpeg2ts"]

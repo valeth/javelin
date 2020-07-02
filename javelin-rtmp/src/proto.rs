@@ -1,6 +1,8 @@
 use {
-    std::convert::{TryFrom, TryInto},
-    std::rc::Rc,
+    std::{
+        convert::{TryFrom, TryInto},
+        rc::Rc,
+    },
     thiserror::Error,
     bytes::Bytes,
     rml_rtmp::{

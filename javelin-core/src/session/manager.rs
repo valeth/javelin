@@ -1,8 +1,5 @@
 use {
-    std::{
-        collections::HashMap,
-        sync::Arc,
-    },
+    std::{collections::HashMap, sync::Arc},
     anyhow::{Result, bail},
     tokio::sync::{broadcast, mpsc, RwLock},
     javelin_types::models::UserRepository,

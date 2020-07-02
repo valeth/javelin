@@ -11,6 +11,15 @@ version = "0.4.0-dev.1"
 edition = "2018"
 
 
+[features]
+default = ["rtmp", "hls", "db-sqlite"]
+rtmp = ["javelin-rtmp"]
+rtmps = ["javelin-rtmp/rtmps"]
+hls = ["javelin-hls"]
+db-sqlite = ["r2d2", "r2d2_sqlite"]
+db-mongo = ["mongodb"]
+
+
 [dependencies]
 anyhow = "^1.0"
 log = { version = "^0.4", features = ["max_level_debug", "release_max_level_info"] }
@@ -28,28 +37,19 @@ default-features = false
 features = ["rt-threaded", "macros", "time"]
 
 [dependencies.javelin-core]
-version = "0.4.0"
+version = "0.4.0-dev.1"
 path = "../javelin-core"
 
 [dependencies.javelin-types]
-version = "0.4.0"
+version = "0.4.0-dev.1"
 path = "../javelin-types"
 
 [dependencies.javelin-rtmp]
-version = "0.4.0"
+version = "0.4.0-dev.1"
 optional = true
 path = "../javelin-rtmp"
 
 [dependencies.javelin-hls]
-version = "0.4.0"
+version = "0.4.0-dev.1"
 optional = true
 path = "../javelin-hls"
-
-
-[features]
-default = ["rtmp", "hls", "db-sqlite"]
-rtmp = ["javelin-rtmp"]
-rtmps = ["javelin-rtmp/rtmps"]
-hls = ["javelin-hls"]
-db-sqlite = ["r2d2", "r2d2_sqlite"]
-db-mongo = ["mongodb"]
