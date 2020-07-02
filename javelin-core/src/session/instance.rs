@@ -1,21 +1,8 @@
 use {
-    tokio::sync::{broadcast, mpsc},
     anyhow::Result,
     javelin_types::{Packet, PacketType},
-    super::transport::Responder,
+    super::transport::{IncomingBroadcast, OutgoingBroadcast, Message},
 };
-
-
-pub enum Message {
-    Packet(Packet),
-    GetInitData(Responder<(Option<Packet>, Option<Packet>, Option<Packet>)>),
-    Disconnect,
-}
-
-pub type Handle = mpsc::UnboundedSender<Message>;
-pub type IncomingBroadcast = mpsc::UnboundedReceiver<Message>;
-pub type OutgoingBroadcast = broadcast::Sender<Packet>;
-pub type Watcher = broadcast::Receiver<Packet>;
 
 
 pub struct Session {

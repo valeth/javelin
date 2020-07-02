@@ -55,7 +55,7 @@ impl Service {
             });
         }
 
-        let (trigger, mut trigger_handle) = session::manager::trigger_channel();
+        let (trigger, mut trigger_handle) = session::trigger_channel();
 
         if let Err(_) = self.session_manager.send(ManagerMessage::RegisterTrigger("create_session", trigger)) {
             log::error!("Failed to register session trigger");

@@ -4,32 +4,15 @@ use {
     tokio::sync::{broadcast, mpsc, RwLock},
     javelin_types::models::UserRepository,
     super::{
-        instance::{Session, Handle, Watcher, OutgoingBroadcast},
-        transport::Responder,
+        instance::Session,
+        transport::{
+            ManagerHandle, ManagerReceiver, ManagerMessage,
+            Trigger,
+            Handle, OutgoingBroadcast,
+        },
+        AppName, Event,
     },
 };
-
-
-pub type Trigger = mpsc::UnboundedSender<(String, Watcher)>;
-pub type TriggerHandle = mpsc::UnboundedReceiver<(String, Watcher)>;
-
-pub fn trigger_channel() -> (Trigger, TriggerHandle) {
-    mpsc::unbounded_channel()
-}
-
-
-pub type ManagerHandle = mpsc::UnboundedSender<ManagerMessage>;
-type ManagerReceiver = mpsc::UnboundedReceiver<ManagerMessage>;
-type Event = &'static str;
-type AppName = String;
-type StreamKey = String;
-
-pub enum ManagerMessage {
-    CreateSession((AppName, StreamKey, Responder<Handle>)),
-    ReleaseSession(AppName),
-    JoinSession((AppName, Responder<(Handle, Watcher)>)),
-    RegisterTrigger(Event, Trigger),
-}
 
 
 pub struct Manager<D>
