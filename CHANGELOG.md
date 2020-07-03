@@ -8,7 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-*No changes yet.*
+### Changed
+- Project is split into sub-crates.
+- Now using fern as the logging backend.
+- RTMP and RTMPS can now run simultaneously.
+
+### Fixed
+- Prevent session deadlock by timing out idle RTMP connections.
+
+### Removed
+- All module specific CLI flags.
+- Ability to set stream key via CLI arguments or configuration file. Now uses the database instead.
+
 
 ---
 
