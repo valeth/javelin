@@ -1,14 +1,14 @@
 [package]
-authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 name = "javelin"
-description = "Simple streaming server"
-keywords = ["rtmp", "hls", "live-streaming", "media"]
-categories = ["multimedia", "multimedia::audio", "multimedia::video"]
-license = "GPL-3.0"
-readme = "README.md"
-repository = "https://gitlab.com/valeth/javelin.git"
 version = "0.4.0-dev.1"
+authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
+description = "Simple streaming server"
+license = "GPL-3.0"
 edition = "2018"
+repository = "https://gitlab.com/valeth/javelin.git"
+categories = ["multimedia", "multimedia::audio", "multimedia::video"]
+keywords = ["live-streaming"]
+readme = "../README.md"
 
 
 [features]

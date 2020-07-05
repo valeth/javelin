@@ -2,8 +2,12 @@
 name = "javelin-hls"
 version = "0.4.0-dev.1"
 authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
+description = "Simple streaming server (HLS)"
 license = "GPL-3.0"
 edition = "2018"
+repository = "https://gitlab.com/valeth/javelin.git"
+categories = ["multimedia", "multimedia::audio", "multimedia::video"]
+keywords = ["http-live-streaming"]
 
 
 [dependencies]

@@ -1,12 +1,13 @@
 [package]
-authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 name = "javelin-codec"
-description = "Codecs for the Javelin streaming server"
-keywords = ["video", "audio", "codec"]
-license = "GPL-3.0"
-repository = "https://gitlab.com/valeth/javelin.git"
 version = "0.4.0-dev.1"
+authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
+description = "Simple streaming server (codecs)"
+license = "GPL-3.0"
 edition = "2018"
+repository = "https://gitlab.com/valeth/javelin.git"
+categories = ["multimedia", "multimedia::audio", "multimedia::video"]
+keywords = ["audio", "video"]
 
 
 [features]
