@@ -1,5 +1,19 @@
-#[cfg_attr(all(feature = "db-sqlite", not(feature = "db-mongo")), path = "database/sqlite.rs")]
-#[cfg_attr(all(feature = "db-mongo", not(feature = "db-sqlite")), path = "database/mongo.rs")]
+#[cfg(all(
+    feature = "db-sqlite",
+    feature = "db-mongo")
+)]
+compile_error!("Cannot enable multiple database backends simultaneously");
+
+
+#[cfg(not(any(
+    feature = "db-sqlite",
+    feature = "db-mongo")
+))]
+compile_error!("One database backend is required");
+
+
+#[cfg_attr(feature = "db-sqlite", path = "database/sqlite.rs")]
+#[cfg_attr(feature = "db-mongo", path = "database/mongo.rs")]
 mod backend;
 
-pub use backend::Database;
+pub use self::backend::Database;
