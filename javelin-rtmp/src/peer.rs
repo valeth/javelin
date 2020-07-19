@@ -121,7 +121,8 @@ impl<S> Peer<S>
                 self.session_manager
                     .send(ManagerMessage::CreateSession((app_name, stream_key, request)))
                     .map_err(|_| Error::SessionCreationFailed)?;
-                let session_sender = response.await.unwrap();
+                let session_sender = response.await
+                    .map_err(|_| Error::SessionCreationFailed)?;
                 self.state = State::Publishing(session_sender);
             },
             Event::JoinSession { app_name, .. } => {
