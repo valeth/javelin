@@ -1,7 +1,9 @@
 use {
     std::path::PathBuf,
-    r2d2::Pool,
-    r2d2_sqlite::{SqliteConnectionManager, rusqlite::OptionalExtension},
+    r2d2_sqlite::{
+        SqliteConnectionManager,
+        rusqlite::{params, OptionalExtension},
+    },
     javelin_types::{
         async_trait,
         models::{UserRepository, User, Error},
@@ -9,10 +11,11 @@ use {
     javelin_core::Config,
 };
 
+type Pool = r2d2::Pool<SqliteConnectionManager>;
 
 #[derive(Clone)]
 pub struct Database {
-    pool: Pool<SqliteConnectionManager>
+    pool: Pool,
 }
 
 
@@ -25,8 +28,21 @@ impl Database {
             .build(manager)
             .unwrap();
 
+        initialize_tables(&pool);
+
         Self { pool }
     }
+}
+
+fn initialize_tables(pool: &Pool) {
+    let conn = pool.get().unwrap();
+
+    log::debug!("Initializing database");
+
+    let create_users = include_str!("sqlite/users.sql");
+
+    conn.execute(create_users, params![])
+        .expect("Failed to create users table");
 }
 
 #[async_trait]
