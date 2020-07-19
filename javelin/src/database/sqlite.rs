@@ -2,7 +2,7 @@ use {
     std::path::PathBuf,
     r2d2_sqlite::{
         SqliteConnectionManager,
-        rusqlite::{params, OptionalExtension},
+        rusqlite::{named_params, params, OptionalExtension},
     },
     javelin_types::{
         async_trait,
@@ -69,11 +69,23 @@ impl UserRepository for Database {
         let conn = self.pool.get()
             .map_err(|_| Error::UpdateFailed)?;
 
-        let mut stmt = conn
-            .prepare("SELECT name, key FROM users WHERE name=?")
-            .map_err(|_| Error::UpdateFailed)?;
+        let stmt = match self.user_by_name(&name).await? {
+            Some(user) if &user.key == &key => {
+                log::debug!("User with key already exists, no update required");
+                return Ok(());
+            },
+            Some(_) => {
+                log::debug!("Updating existing user");
+                conn.prepare("UPDATE users SET key=:key WHERE name=:name")
+            },
+            None => {
+                log::debug!("Creating new user");
+                conn.prepare("INSERT INTO users (name, key) VALUES (:name, :key)")
+            }
+        };
 
-        stmt.execute(&[name, key])
+        stmt.expect("Failed to prepare SQL statement")
+            .execute_named(named_params!{":name": name, ":key": key})
             .map_err(|_| Error::UpdateFailed)?;
 
         Ok(())
