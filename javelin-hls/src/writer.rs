@@ -100,10 +100,10 @@ impl Writer {
                 self.buffer.write_to_file(&path)?;
                 self.playlist.add_media_segment(filename, keyframe_duration);
                 self.next_write += self.write_interval;
+                self.last_keyframe = timestamp;
             }
 
             self.keyframe_counter += 1;
-            self.last_keyframe = timestamp;
         }
 
         let video = match self.avc_coder.read_format(avc::Avcc, &payload)? {
