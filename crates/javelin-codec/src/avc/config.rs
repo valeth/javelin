@@ -1,14 +1,9 @@
-use {
-    std::{
-        convert::TryFrom,
-        io::Cursor,
-    },
-    bytes::Buf,
-    super::{
-        nal,
-        AvcError,
-    },
-};
+use std::convert::TryFrom;
+use std::io::Cursor;
+
+use bytes::Buf;
+
+use super::{nal, AvcError};
 
 
 // Bits | Name
@@ -45,7 +40,7 @@ impl TryFrom<&[u8]> for DecoderConfigurationRecord {
         let mut buf = Cursor::new(bytes);
 
         if buf.remaining() < 7 {
-            return Err(AvcError::NotEnoughData("AVC configuration record"))
+            return Err(AvcError::NotEnoughData("AVC configuration record"));
         }
 
         let version = buf.get_u8();
@@ -69,7 +64,7 @@ impl TryFrom<&[u8]> for DecoderConfigurationRecord {
             if buf.remaining() < sps_length {
                 return Err(AvcError::NotEnoughData("DCR SPS data"));
             }
-            let tmp = buf.bytes()[..sps_length].to_owned();
+            let tmp = buf.chunk()[..sps_length].to_owned();
             buf.advance(sps_length);
 
             sps.push(nal::Unit::try_from(&*tmp)?);
@@ -86,7 +81,7 @@ impl TryFrom<&[u8]> for DecoderConfigurationRecord {
             if buf.remaining() < pps_length {
                 return Err(AvcError::NotEnoughData("DCR PPS data"));
             }
-            let tmp = buf.bytes()[..pps_length].to_owned();
+            let tmp = buf.chunk()[..pps_length].to_owned();
             buf.advance(pps_length);
 
             pps.push(nal::Unit::try_from(&*tmp)?);

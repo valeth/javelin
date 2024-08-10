@@ -1,12 +1,10 @@
-use {
-    std::{
-        convert::TryFrom,
-        fmt::{self, Debug},
-        io::{Cursor, Read},
-    },
-    bytes::{Bytes, Buf},
-    crate::flv::error::FlvError,
-};
+use std::convert::TryFrom;
+use std::fmt::{self, Debug};
+use std::io::{Cursor, Read};
+
+use bytes::{Buf, Bytes};
+
+use crate::flv::error::FlvError;
 
 
 /// Frequency value in Hertz
@@ -48,7 +46,7 @@ impl TryFrom<u8> for AacPacketType {
         Ok(match val {
             0 => Self::SequenceHeader,
             1 => Self::Raw,
-            x => return Err(FlvError::UnknownPackageType(x))
+            x => return Err(FlvError::UnknownPackageType(x)),
         })
     }
 }
@@ -83,7 +81,7 @@ impl TryFrom<&[u8]> for AudioData {
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         if bytes.len() < 2 {
-            return Err(FlvError::NotEnoughData("FLV Audio Tag header"))
+            return Err(FlvError::NotEnoughData("FLV Audio Tag header"));
         }
 
         let mut buf = Cursor::new(bytes);
@@ -103,7 +101,14 @@ impl TryFrom<&[u8]> for AudioData {
         let mut body = Vec::new();
         buf.read_to_end(&mut body)?;
 
-        Ok(Self { format, sampling_rate, sample_size, stereo, aac_packet_type, body: body.into() })
+        Ok(Self {
+            format,
+            sampling_rate,
+            sample_size,
+            stereo,
+            aac_packet_type,
+            body: body.into(),
+        })
     }
 }
 
@@ -126,7 +131,7 @@ fn try_convert_sampling_rate(val: u8) -> Result<Frequency, FlvError> {
         1 => Frequency(11000),
         2 => Frequency(22000),
         3 => Frequency(44000),
-        x => return Err(FlvError::UnsupportedSamplingRate(x))
+        x => return Err(FlvError::UnsupportedSamplingRate(x)),
     })
 }
 
@@ -134,6 +139,6 @@ fn try_convert_sample_size(val: u8) -> Result<u8, FlvError> {
     Ok(match val {
         0 => 8,
         1 => 16,
-        x => return Err(FlvError::UnsupportedSampleSize(x))
+        x => return Err(FlvError::UnsupportedSampleSize(x)),
     })
 }

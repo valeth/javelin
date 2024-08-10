@@ -1,11 +1,9 @@
-use {
-    bytes::BufMut,
-    super::config::AudioSpecificConfiguration,
-    crate::{
-        WriteFormat,
-        aac::{Aac, error::AacError},
-    },
-};
+use bytes::BufMut;
+
+use super::config::AudioSpecificConfiguration;
+use crate::aac::error::AacError;
+use crate::aac::Aac;
+use crate::WriteFormat;
 
 
 // Bits | Description
@@ -32,8 +30,8 @@ use {
 pub struct AudioDataTransportStream;
 
 impl AudioDataTransportStream {
-    const SYNCWORD: u16 = 0xFFF0;
     const PROTECTION_ABSENCE: u16 = 0x0001;
+    const SYNCWORD: u16 = 0xFFF0;
 }
 
 impl WriteFormat<Aac> for AudioDataTransportStream {
@@ -55,7 +53,9 @@ impl WriteFormat<Aac> for AudioDataTransportStream {
 
         let sampling_frequency_index = u8::from(ctx.sampling_frequency_index) << 2;
         if sampling_frequency_index == 0x0F {
-            return Err(AacError::ForbiddenSamplingFrequencyIndex(sampling_frequency_index));
+            return Err(AacError::ForbiddenSamplingFrequencyIndex(
+                sampling_frequency_index,
+            ));
         }
 
         let channel_configuration: u8 = ctx.channel_configuration.into();

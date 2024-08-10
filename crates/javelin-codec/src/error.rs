@@ -1,11 +1,8 @@
-use {
-    thiserror::Error,
-    crate::{
-        avc::AvcError,
-        aac::AacError,
-        flv::FlvError,
-    }
-};
+use thiserror::Error;
+
+use crate::aac::AacError;
+use crate::avc::AvcError;
+use crate::flv::FlvError;
 #[cfg(feature = "mpegts")]
 use crate::mpegts::TsError;
 

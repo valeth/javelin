@@ -1,16 +1,17 @@
-use {
-    crate::{
-        avc::{Avc, error::AvcError, nal, config::DecoderConfigurationRecord},
-        WriteFormat,
-    },
-};
+use tracing::debug;
+
+use crate::avc::config::DecoderConfigurationRecord;
+use crate::avc::error::AvcError;
+use crate::avc::{nal, Avc};
+use crate::WriteFormat;
+
 
 pub struct AnnexB;
 
 impl AnnexB {
+    const ACCESS_UNIT_DELIMITER: &'static [u8] = &[0x00, 0x00, 0x00, 0x01, 0x09, 0xF0];
     const DELIMITER1: &'static [u8] = &[0x00, 0x00, 0x01];
     const DELIMITER2: &'static [u8] = &[0x00, 0x00, 0x00, 0x01];
-    const ACCESS_UNIT_DELIMITER: &'static [u8] = &[0x00, 0x00, 0x00, 0x01, 0x09, 0xF0];
 }
 
 impl WriteFormat<Avc> for AnnexB {
@@ -33,7 +34,7 @@ impl WriteFormat<Avc> for AnnexB {
                         out_buffer.extend(Self::ACCESS_UNIT_DELIMITER);
                         aud_appended = true;
                     }
-                },
+                }
                 IdrPicture => {
                     if !aud_appended {
                         out_buffer.extend(Self::ACCESS_UNIT_DELIMITER);
@@ -55,8 +56,8 @@ impl WriteFormat<Avc> for AnnexB {
 
                         sps_and_pps_appended = true;
                     }
-                },
-                t => log::debug!("Received unhandled NALU type {:?}", t),
+                }
+                t => debug!("Received unhandled NALU type {:?}", t),
             }
 
             out_buffer.extend(Self::DELIMITER1);

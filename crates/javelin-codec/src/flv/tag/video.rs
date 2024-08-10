@@ -1,12 +1,10 @@
-use {
-    std::{
-        convert::TryFrom,
-        io::{Cursor, Read},
-        fmt::{self, Debug},
-    },
-    bytes::{Bytes, Buf},
-    crate::flv::error::FlvError,
-};
+use std::convert::TryFrom;
+use std::fmt::{self, Debug};
+use std::io::{Cursor, Read};
+
+use bytes::{Buf, Bytes};
+
+use crate::flv::error::FlvError;
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,7 +26,7 @@ impl TryFrom<u8> for FrameType {
             3 => Self::DisposableInterFrame,
             4 => Self::GeneratedKeyframe,
             5 => Self::VideoInfoFrame,
-            x => return Err(FlvError::UnknownFrameType(x))
+            x => return Err(FlvError::UnknownFrameType(x)),
         })
     }
 }
@@ -50,7 +48,7 @@ impl TryFrom<u8> for AvcPacketType {
             0 => Self::SequenceHeader,
             1 => Self::NalUnit,
             2 => Self::EndOfSequence,
-            x => return Err(FlvError::UnknownPackageType(x))
+            x => return Err(FlvError::UnknownPackageType(x)),
         })
     }
 }
@@ -96,7 +94,7 @@ impl TryFrom<&[u8]> for VideoData {
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         if bytes.len() < 5 {
-            return Err(FlvError::NotEnoughData("FLV Video Tag header"))
+            return Err(FlvError::NotEnoughData("FLV Video Tag header"));
         }
 
         let mut buf = Cursor::new(bytes);
@@ -106,20 +104,25 @@ impl TryFrom<&[u8]> for VideoData {
         // Only support AVC payloads
         let codec_id = header_a & 0x0F;
         if codec_id != 7 {
-            return Err(FlvError::UnsupportedVideoFormat(codec_id))
+            return Err(FlvError::UnsupportedVideoFormat(codec_id));
         }
 
         let frame_type = FrameType::try_from(header_a >> 4)?;
 
         let header_b = buf.get_u32();
 
-        let packet_type =  AvcPacketType::try_from((header_b >> 24) as u8)?;
+        let packet_type = AvcPacketType::try_from((header_b >> 24) as u8)?;
 
         let composition_time = (header_b & 0x00_FF_FF_FF) as i32;
 
         let mut remaining = Vec::new();
         buf.read_to_end(&mut remaining)?;
 
-        Ok(Self { frame_type, packet_type, composition_time, body: remaining.into() })
+        Ok(Self {
+            frame_type,
+            packet_type,
+            composition_time,
+            body: remaining.into(),
+        })
     }
 }

@@ -1,14 +1,10 @@
-use {
-    std::{
-        io::Cursor,
-        convert::TryFrom,
-    },
-    bytes::Buf,
-    super::{
-        common::{SamplingFrequencyIndex, ChannelConfiguration, AudioObjectType},
-        AacError,
-    },
-};
+use std::convert::TryFrom;
+use std::io::Cursor;
+
+use bytes::Buf;
+
+use super::common::{AudioObjectType, ChannelConfiguration, SamplingFrequencyIndex};
+use super::AacError;
 
 
 // Bits | Description

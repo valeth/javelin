@@ -1,7 +1,6 @@
-use {
-    std::convert::TryFrom,
-    super::AacError,
-};
+use std::convert::TryFrom;
+
+use super::AacError;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SamplingFrequencyIndex(u8);
@@ -61,13 +60,12 @@ impl TryFrom<u8> for AudioObjectType {
     type Error = AacError;
 
     fn try_from(value: u8) -> Result<Self, AacError> {
-        Ok(match  value {
+        Ok(match value {
             1 => Self::AacMain,
             2 => Self::AacLowComplexity,
             3 => Self::AacScalableSampleRate,
             4 => Self::AacLongTermPrediction,
-            _ => return Err(AacError::UnsupportedAudioFormat)
+            _ => return Err(AacError::UnsupportedAudioFormat),
         })
     }
 }
-

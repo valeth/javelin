@@ -1,24 +1,13 @@
-use {
-    std::{
-        fs::File,
-        path::Path,
-        io::Cursor,
-    },
-    bytes::Buf,
-    mpeg2ts::{
-        ts::{
-            self,
-            ContinuityCounter,
-            TsPacket,
-            TsHeader,
-            TsPayload,
-            Pid,
-        },
-        pes::PesHeader,
-        time::{Timestamp, ClockReference},
-    },
-    super::TsError,
-};
+use std::fs::File;
+use std::io::Cursor;
+use std::path::Path;
+
+use bytes::Buf;
+use mpeg2ts::pes::PesHeader;
+use mpeg2ts::time::{ClockReference, Timestamp};
+use mpeg2ts::ts::{self, ContinuityCounter, Pid, TsHeader, TsPacket, TsPayload};
+
+use super::TsError;
 
 
 const PMT_PID: u16 = 256;
@@ -26,6 +15,7 @@ const VIDEO_ES_PID: u16 = 257;
 const AUDIO_ES_PID: u16 = 258;
 const PES_VIDEO_STREAM_ID: u8 = 224;
 const PES_AUDIO_STREAM_ID: u8 = 192;
+
 
 pub struct TransportStream {
     video_continuity_counter: ContinuityCounter,
@@ -39,7 +29,8 @@ impl TransportStream {
     }
 
     pub fn write_to_file<P>(&mut self, filename: P) -> Result<(), TsError>
-        where P: AsRef<Path>
+    where
+        P: AsRef<Path>,
     {
         use mpeg2ts::ts::{TsPacketWriter, WriteTsPacket};
 
@@ -64,11 +55,15 @@ impl TransportStream {
         Ok(())
     }
 
-    pub fn push_video(&mut self, timestamp: u64, composition_time: u64, keyframe: bool, video: Vec<u8>) -> Result<(), TsError> {
-        use mpeg2ts::{
-            ts::{AdaptationField, payload},
-            es::StreamId,
-        };
+    pub fn push_video(
+        &mut self,
+        timestamp: u64,
+        composition_time: u64,
+        keyframe: bool,
+        video: Vec<u8>,
+    ) -> Result<(), TsError> {
+        use mpeg2ts::es::StreamId;
+        use mpeg2ts::ts::{payload, AdaptationField};
 
         let mut header = default_ts_header(VIDEO_ES_PID)?;
         header.continuity_counter = self.video_continuity_counter;
@@ -77,9 +72,9 @@ impl TransportStream {
         let packet = {
             let data = {
                 let pes_data = if buf.remaining() < 153 {
-                    buf.bytes()
+                    buf.chunk()
                 } else {
-                    &buf.bytes()[..153]
+                    &buf.chunk()[..153]
                 };
                 make_raw_payload(pes_data)?
             };
@@ -120,7 +115,7 @@ impl TransportStream {
                         escr: None,
                     },
                     pes_packet_len: 0,
-                    data
+                    data,
                 })),
             }
         };
@@ -131,9 +126,9 @@ impl TransportStream {
         while buf.has_remaining() {
             let raw_payload = {
                 let pes_data = if buf.remaining() < payload::Bytes::MAX_SIZE {
-                    buf.bytes()
+                    buf.chunk()
                 } else {
-                    &buf.bytes()[..payload::Bytes::MAX_SIZE]
+                    &buf.chunk()[..payload::Bytes::MAX_SIZE]
                 };
                 make_raw_payload(&pes_data)?
             };
@@ -142,7 +137,7 @@ impl TransportStream {
             let packet = TsPacket {
                 header: header.clone(),
                 adaptation_field: None,
-                payload: Some(TsPayload::Raw(raw_payload))
+                payload: Some(TsPayload::Raw(raw_payload)),
             };
 
             self.packets.push(packet);
@@ -155,17 +150,15 @@ impl TransportStream {
     }
 
     pub fn push_audio(&mut self, timestamp: u64, audio: Vec<u8>) -> Result<(), TsError> {
-        use mpeg2ts::{
-            ts::payload,
-            es::StreamId,
-        };
+        use mpeg2ts::es::StreamId;
+        use mpeg2ts::ts::payload;
 
         let mut buf = Cursor::new(audio);
         let data = {
             let pes_data = if buf.remaining() < 153 {
-                buf.bytes()
+                buf.chunk()
             } else {
-                &buf.bytes()[..153]
+                &buf.chunk()[..153]
             };
             make_raw_payload(&pes_data)?
         };
@@ -189,7 +182,7 @@ impl TransportStream {
                     escr: None,
                 },
                 pes_packet_len: 0,
-                data
+                data,
             })),
         };
 
@@ -199,9 +192,9 @@ impl TransportStream {
         while buf.has_remaining() {
             let raw_payload = {
                 let pes_data = if buf.remaining() < payload::Bytes::MAX_SIZE {
-                    buf.bytes()
+                    buf.chunk()
                 } else {
-                    &buf.bytes()[..payload::Bytes::MAX_SIZE]
+                    &buf.chunk()[..payload::Bytes::MAX_SIZE]
                 };
                 make_raw_payload(&pes_data)?
             };
@@ -210,7 +203,7 @@ impl TransportStream {
             let packet = TsPacket {
                 header: header.clone(),
                 adaptation_field: None,
-                payload: Some(TsPayload::Raw(raw_payload))
+                payload: Some(TsPayload::Raw(raw_payload)),
             };
 
             self.packets.push(packet);
@@ -224,7 +217,7 @@ impl TransportStream {
 }
 
 impl Default for TransportStream {
-    fn default() -> Self  {
+    fn default() -> Self {
         Self {
             video_continuity_counter: ContinuityCounter::new(),
             audio_continuity_counter: ContinuityCounter::new(),
@@ -235,19 +228,19 @@ impl Default for TransportStream {
 
 
 fn make_raw_payload(pes_data: &[u8]) -> Result<ts::payload::Bytes, TsError> {
-    ts::payload::Bytes::new(&pes_data)
-        .map_err(|_| TsError::PayloadTooBig)
+    ts::payload::Bytes::new(&pes_data).map_err(|_| TsError::PayloadTooBig)
 }
+
 
 fn make_timestamp(ts: u64) -> Result<Timestamp, TsError> {
-    Timestamp::new(ts)
-        .map_err(|_| TsError::InvalidTimestamp(ts))
+    Timestamp::new(ts).map_err(|_| TsError::InvalidTimestamp(ts))
 }
 
+
 fn make_clock_reference(ts: u64) -> Result<ClockReference, TsError> {
-    ClockReference::new(ts)
-        .map_err(|_| TsError::ClockValueOutOfRange(ts))
+    ClockReference::new(ts).map_err(|_| TsError::ClockValueOutOfRange(ts))
 }
+
 
 fn default_ts_header(pid: u16) -> Result<TsHeader, TsError> {
     use mpeg2ts::ts::TransportScramblingControl;
@@ -261,52 +254,51 @@ fn default_ts_header(pid: u16) -> Result<TsHeader, TsError> {
     })
 }
 
+
 fn default_pat_packet() -> TsPacket {
-    use mpeg2ts::ts::{VersionNumber, payload::Pat, ProgramAssociation};
+    use mpeg2ts::ts::payload::Pat;
+    use mpeg2ts::ts::{ProgramAssociation, VersionNumber};
 
     TsPacket {
         header: default_ts_header(0).unwrap(),
         adaptation_field: None,
-        payload: Some(
-            TsPayload::Pat(Pat {
-                transport_stream_id: 1,
-                version_number: VersionNumber::default(),
-                table: vec![
-                    ProgramAssociation {
-                        program_num: 1,
-                        program_map_pid: Pid::new(PMT_PID).unwrap(),
-                    }
-                ]
-            })),
+        payload: Some(TsPayload::Pat(Pat {
+            transport_stream_id: 1,
+            version_number: VersionNumber::default(),
+            table: vec![ProgramAssociation {
+                program_num: 1,
+                program_map_pid: Pid::new(PMT_PID).unwrap(),
+            }],
+        })),
     }
 }
 
+
 fn default_pmt_packet() -> TsPacket {
-    use mpeg2ts::{
-        ts::{VersionNumber, payload::Pmt, EsInfo},
-        es::StreamType,
-    };
+    use mpeg2ts::es::StreamType;
+    use mpeg2ts::ts::payload::Pmt;
+    use mpeg2ts::ts::{EsInfo, VersionNumber};
 
     TsPacket {
         header: default_ts_header(PMT_PID).unwrap(),
         adaptation_field: None,
-        payload: Some(
-            TsPayload::Pmt(Pmt {
-                program_num: 1,
-                pcr_pid: Some(Pid::new(VIDEO_ES_PID).unwrap()),
-                version_number: VersionNumber::default(),
-                table: vec![
-                    EsInfo {
-                        stream_type: StreamType::H264,
-                        elementary_pid: Pid::new(VIDEO_ES_PID).unwrap(),
-                        descriptors: vec![],
-                    },
-                    EsInfo {
-                        stream_type: StreamType::AdtsAac,
-                        elementary_pid: Pid::new(AUDIO_ES_PID).unwrap(),
-                        descriptors: vec![],
-                    }
-                ]
-            })),
+        payload: Some(TsPayload::Pmt(Pmt {
+            program_num: 1,
+            pcr_pid: Some(Pid::new(VIDEO_ES_PID).unwrap()),
+            version_number: VersionNumber::default(),
+            es_info: vec![
+                EsInfo {
+                    stream_type: StreamType::H264,
+                    elementary_pid: Pid::new(VIDEO_ES_PID).unwrap(),
+                    descriptors: vec![],
+                },
+                EsInfo {
+                    stream_type: StreamType::AdtsAac,
+                    elementary_pid: Pid::new(AUDIO_ES_PID).unwrap(),
+                    descriptors: vec![],
+                },
+            ],
+            program_info: vec![],
+        })),
     }
 }

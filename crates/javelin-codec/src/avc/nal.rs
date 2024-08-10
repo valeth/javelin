@@ -1,12 +1,10 @@
-use {
-    std::{
-        fmt,
-        io::Cursor,
-        convert::TryFrom,
-    },
-    bytes::{Bytes, Buf, BufMut},
-    super::AvcError,
-};
+use std::convert::TryFrom;
+use std::fmt;
+use std::io::Cursor;
+
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+
+use super::AvcError;
 
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
@@ -52,9 +50,7 @@ impl TryFrom<u8> for UnitType {
             15 => UnitType::SequenceParameterSubset,
             19 => UnitType::NotAuxiliaryCoded,
             20 => UnitType::CodedSliceExtension,
-            _ => {
-                return Err(AvcError::UnsupportedNalUnitType(val))
-            },
+            _ => return Err(AvcError::UnsupportedNalUnitType(val)),
         })
     }
 }
@@ -86,9 +82,15 @@ impl TryFrom<&[u8]> for Unit {
 
         let ref_idc = (header >> 5) & 0x03;
         let kind = UnitType::try_from(header & 0x1F)?;
-        let data = buf.to_bytes();
+        let mut data = BytesMut::with_capacity(buf.remaining());
+        data.put(buf);
+        let data = data.freeze();
 
-        Ok(Self { ref_idc, kind, data })
+        Ok(Self {
+            ref_idc,
+            kind,
+            data,
+        })
     }
 }
 
@@ -111,8 +113,6 @@ impl From<Unit> for Vec<u8> {
 
 impl fmt::Debug for Unit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Unit")
-            .field("kind", &self.kind)
-            .finish()
+        f.debug_struct("Unit").field("kind", &self.kind).finish()
     }
 }
