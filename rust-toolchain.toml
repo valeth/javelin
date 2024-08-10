@@ -1,0 +1,5 @@
+[toolchain]
+channel = "1.80.1"
+components = ["clippy", "rust-analyzer", "rust-src"]
+targets = ["x86_64-unknown-linux-gnu"]
+profile = "minimal" # includes rustc, cargo, and rust-std
