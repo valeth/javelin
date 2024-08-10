@@ -1,23 +1,20 @@
-use {
-    futures::SinkExt,
-    tokio::{
-        prelude::*,
-        stream::StreamExt,
-        sync::{self, oneshot, mpsc},
-        time::timeout,
-    },
-    tokio_util::codec::{Framed, BytesCodec},
-    javelin_types::{Packet, PacketType},
-    javelin_core::session::{self, Message, ManagerMessage},
-    crate::{
-        config::Config,
-        error::Error,
-        proto::{Protocol, Event},
-    },
-};
+use bytes::Bytes;
+use futures::{SinkExt, TryStreamExt};
+use javelin_core::session::{self, ManagerMessage, Message};
+use javelin_types::{Packet, PacketType};
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::sync::{self, mpsc, oneshot};
+use tokio::time::timeout;
+use tokio_util::codec::{BytesCodec, Framed};
+use tracing::{debug, info};
+
+use crate::config::Config;
+use crate::error::Error;
+use crate::proto::{Event, Protocol};
 
 
 type ReturnQueue<P> = (mpsc::Sender<P>, mpsc::Receiver<P>);
+
 
 enum State {
     Initializing,
@@ -26,9 +23,11 @@ enum State {
     Disconnecting,
 }
 
+
 /// Represents an incoming connection
 pub struct Peer<S>
-    where S: AsyncRead + AsyncWrite + Unpin
+where
+    S: AsyncRead + AsyncWrite + Unpin,
 {
     id: u64,
     bytes_stream: Framed<S, BytesCodec>,
@@ -41,9 +40,15 @@ pub struct Peer<S>
 }
 
 impl<S> Peer<S>
-    where S: AsyncRead + AsyncWrite + Unpin
+where
+    S: AsyncRead + AsyncWrite + Unpin,
 {
-    pub fn new(id: u64, stream: S, session_manager: session::ManagerHandle, config: Config) -> Self {
+    pub fn new(
+        id: u64,
+        stream: S,
+        session_manager: session::ManagerHandle,
+        config: Config,
+    ) -> Self {
         Self {
             id,
             bytes_stream: Framed::new(stream, BytesCodec::new()),
@@ -59,9 +64,9 @@ impl<S> Peer<S>
     pub async fn run(mut self) -> Result<(), Error> {
         loop {
             while let Ok(packet) = self.return_queue.1.try_recv() {
-               if self.handle_return_packet(packet).await.is_err() {
-                   self.disconnect()?
-               }
+                if self.handle_return_packet(packet).await.is_err() {
+                    self.disconnect()?
+                }
             }
 
             match &mut self.state {
@@ -72,59 +77,67 @@ impl<S> Peer<S>
                             for event in self.proto.handle_bytes(&data).unwrap() {
                                 self.handle_event(event).await?;
                             }
-                        },
-                        _ => self.disconnect()?
+                        }
+                        _ => self.disconnect()?,
                     }
-                },
+                }
                 State::Playing(_, watcher) => {
-                    use sync::broadcast::RecvError;
+                    use sync::broadcast::error::RecvError;
                     match watcher.recv().await {
-                        Ok(packet ) => self.send_back(packet).await?,
+                        Ok(packet) => self.send_back(packet).await?,
                         Err(RecvError::Closed) => self.disconnect()?,
-                        Err(_) => ()
+                        Err(_) => (),
                     }
                 }
                 State::Disconnecting => {
-                    log::debug!("Disconnecting...");
+                    debug!("Disconnecting...");
                     return Ok(());
-                },
+                }
             }
         }
     }
 
     async fn handle_return_packet(&mut self, packet: Packet) -> Result<(), Error> {
-        let bytes = match packet.kind  {
+        let bytes = match packet.kind {
             PacketType::Meta => self.proto.pack_metadata(packet)?,
             PacketType::Video => self.proto.pack_video(packet)?,
             PacketType::Audio => self.proto.pack_audio(packet)?,
         };
         let duration = self.config.connection_timeout;
-        let res = timeout(duration, self.bytes_stream.send(bytes.into())).await?;
+        let bytes = Bytes::from(bytes);
+        let res = timeout(duration, self.bytes_stream.send(bytes)).await?;
         Ok(res?)
     }
 
     async fn handle_event(&mut self, event: Event) -> Result<(), Error> {
         match event {
             Event::ReturnData(data) => {
-                self.bytes_stream.send(data).await.expect("Failed to return data");
-            },
+                self.bytes_stream
+                    .send(data)
+                    .await
+                    .expect("Failed to return data");
+            }
             Event::SendPacket(packet) => {
                 if let State::Publishing(session) = &mut self.state {
                     session
                         .send(Message::Packet(packet))
                         .map_err(|_| Error::SessionSendFailed)?;
                 }
-            },
-            Event::AcquireSession { app_name, stream_key } => {
+            }
+            Event::AcquireSession {
+                app_name,
+                stream_key,
+            } => {
                 self.app_name = Some(app_name.clone());
                 let (request, response) = oneshot::channel();
                 self.session_manager
-                    .send(ManagerMessage::CreateSession((app_name, stream_key, request)))
+                    .send(ManagerMessage::CreateSession((
+                        app_name, stream_key, request,
+                    )))
                     .map_err(|_| Error::SessionCreationFailed)?;
-                let session_sender = response.await
-                    .map_err(|_| Error::SessionCreationFailed)?;
+                let session_sender = response.await.map_err(|_| Error::SessionCreationFailed)?;
                 self.state = State::Publishing(session_sender);
-            },
+            }
             Event::JoinSession { app_name, .. } => {
                 let (request, response) = oneshot::channel();
                 self.session_manager
@@ -135,9 +148,9 @@ impl<S> Peer<S>
                     Ok((session_sender, session_receiver)) => {
                         self.state = State::Playing(session_sender, session_receiver);
                     }
-                    Err(_) => self.disconnect()?
+                    Err(_) => self.disconnect()?,
                 }
-            },
+            }
             Event::SendInitData { .. } => {
                 // TODO: better initialization handling
                 if let State::Playing(session, _) = &mut self.state {
@@ -160,15 +173,19 @@ impl<S> Peer<S>
     }
 
     async fn send_back(&mut self, packet: Packet) -> Result<(), Error> {
-        self.return_queue.0
-            .send_timeout(packet, self.config.connection_timeout).await
+        self.return_queue
+            .0
+            .send_timeout(packet, self.config.connection_timeout)
+            .await
             .map_err(|_| Error::ReturnPacketFailed(self.id))
     }
 
     fn disconnect(&mut self) -> Result<(), Error> {
         if let State::Publishing(session) = &mut self.state {
             let app_name = self.app_name.clone().unwrap();
-            session.send(Message::Disconnect).map_err(|_| Error::SessionSendFailed)?;
+            session
+                .send(Message::Disconnect)
+                .map_err(|_| Error::SessionSendFailed)?;
 
             self.session_manager
                 .send(ManagerMessage::ReleaseSession(app_name))
@@ -182,9 +199,10 @@ impl<S> Peer<S>
 }
 
 impl<S> Drop for Peer<S>
-    where S: AsyncRead + AsyncWrite + Unpin
+where
+    S: AsyncRead + AsyncWrite + Unpin,
 {
     fn drop(&mut self) {
-        log::info!("Client {} disconnected", self.id);
+        info!("Client {} disconnected", self.id);
     }
 }

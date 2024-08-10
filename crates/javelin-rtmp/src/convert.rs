@@ -1,8 +1,7 @@
-use {
-    std::collections::HashMap,
-    javelin_types::Metadata,
-    rml_rtmp::sessions::StreamMetadata,
-};
+use std::collections::HashMap;
+
+use javelin_types::Metadata;
+use rml_rtmp::sessions::StreamMetadata;
 
 // Temporary conversion functions
 
@@ -17,8 +16,8 @@ pub(crate) fn from_metadata(val: StreamMetadata) -> Metadata {
         map.insert("audio.channels", v.to_string());
     }
 
-    if let Some(v) = val.audio_codec {
-        map.insert("audio.codec", v);
+    if let Some(v) = val.audio_codec_id {
+        map.insert("audio.codec_id", v.to_string());
     }
 
     if let Some(v) = val.audio_is_stereo {
@@ -33,8 +32,8 @@ pub(crate) fn from_metadata(val: StreamMetadata) -> Metadata {
         map.insert("video.bitrate", v.to_string());
     }
 
-    if let Some(v) = val.video_codec {
-        map.insert("video.codec", v);
+    if let Some(v) = val.video_codec_id {
+        map.insert("video.codec_id", v.to_string());
     }
 
     if let Some(v) = val.video_frame_rate {
@@ -60,14 +59,14 @@ pub(crate) fn into_metadata(val: Metadata) -> StreamMetadata {
     StreamMetadata {
         video_width: val.get("video.width"),
         video_height: val.get("video.height"),
-        video_codec: val.get("video.codec"),
+        video_codec_id: val.get("video.codec_id"),
         video_frame_rate: val.get("video.frame_rate"),
         video_bitrate_kbps: val.get("video.bitrate"),
-        audio_codec: val.get("audio.codec"),
+        audio_codec_id: val.get("audio.codec_id"),
         audio_bitrate_kbps: val.get("audio.bitrate"),
         audio_sample_rate: val.get("audio.sampling_rate"),
         audio_channels: val.get("audio.channels"),
         audio_is_stereo: val.get("audio.stereo"),
-        encoder: val.get("encoder") ,
+        encoder: val.get("encoder"),
     }
 }

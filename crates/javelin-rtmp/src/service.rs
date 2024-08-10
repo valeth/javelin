@@ -1,30 +1,23 @@
-use {
-    std::{
-        io::ErrorKind as IoErrorKind,
-        sync::atomic::{AtomicUsize, Ordering},
-        time::Duration,
-        fmt::{self, Display},
-    },
-    anyhow::Result,
-    tokio::{
-        prelude::*,
-        net::TcpListener,
-    },
-    javelin_core::{session, Config},
-    crate::{
-        config::Config as RtmpConfig,
-        peer::Peer,
-        Error,
-    },
-};
+use std::fmt::{self, Display};
+use std::io::ErrorKind as IoErrorKind;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
+use anyhow::Result;
+use javelin_core::{session, Config};
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::TcpListener;
+use tracing::{error, info};
 #[cfg(feature = "rtmps")]
 use {native_tls, tokio_native_tls::TlsAcceptor};
+
+use crate::config::Config as RtmpConfig;
+use crate::peer::Peer;
+use crate::Error;
 
 
 #[derive(Debug, Default)]
 pub(crate) struct ClientId {
-    value: AtomicUsize
+    value: AtomicUsize,
 }
 
 impl ClientId {
@@ -57,7 +50,7 @@ impl Service {
         Self {
             session_manager,
             config: config.get("rtmp").unwrap_or_default(),
-            client_id: ClientId::default()
+            client_id: ClientId::default(),
         }
     }
 
@@ -65,24 +58,20 @@ impl Service {
         #[cfg(not(feature = "rtmps"))]
         let res = self.handle_rtmp().await;
         #[cfg(feature = "rtmps")]
-        let res = tokio::try_join!(
-            self.handle_rtmp(),
-            self.handle_rtmps()
-        );
+        let res = tokio::try_join!(self.handle_rtmp(), self.handle_rtmps());
 
         if let Err(err) = res {
-            log::error!("{}", err);
+            error!("{}", err);
         }
     }
 
     async fn handle_rtmp(&self) -> Result<()> {
         let addr = &self.config.addr;
-        let mut listener = TcpListener::bind(addr).await?;
-        log::info!("Listening for RTMP connections on {}", addr);
+        let listener = TcpListener::bind(addr).await?;
+        info!("Listening for RTMP connections on {}", addr);
 
         loop {
             let (tcp_stream, _addr) = listener.accept().await?;
-            tcp_stream.set_keepalive(Some(Duration::from_secs(30)))?;
             self.process(tcp_stream);
             self.client_id.increment();
         }
@@ -90,13 +79,15 @@ impl Service {
 
     #[cfg(feature = "rtmps")]
     async fn handle_rtmps(&self) -> Result<()> {
+        use tracing::info;
+
         if !self.config.tls.enabled {
-            return Ok(())
+            return Ok(());
         }
 
         let addr = &self.config.tls.addr;
         let mut listener = TcpListener::bind(addr).await?;
-        log::info!("Listening for RTMPS connections on {}", addr);
+        info!("Listening for RTMPS connections on {}", addr);
 
         let tls_acceptor = {
             let p12 = self.config.tls.read_cert()?;
@@ -114,17 +105,23 @@ impl Service {
     }
 
     fn process<S>(&self, stream: S)
-        where S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static,
     {
-        log::info!("New client connection: {}", &self.client_id);
+        info!("New client connection: {}", &self.client_id);
         let id = (&self.client_id).into();
-        let peer = Peer::new(id, stream, self.session_manager.clone(), self.config.clone());
+        let peer = Peer::new(
+            id,
+            stream,
+            self.session_manager.clone(),
+            self.config.clone(),
+        );
 
         tokio::spawn(async move {
             if let Err(err) = peer.run().await {
                 match err {
                     Error::Disconnected(e) if e.kind() == IoErrorKind::ConnectionReset => (),
-                    e => log::error!("{}", e)
+                    e => error!("{}", e),
                 }
             }
         });
