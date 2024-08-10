@@ -1,12 +1,14 @@
 [package]
 name = "javelin-rtmp"
-version = "0.4.0-dev.1"
-authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 description = "Simple streaming server (RTMP)"
-license = "GPL-3.0"
-edition = "2018"
-repository = "https://gitlab.com/valeth/javelin.git"
-categories = ["multimedia", "multimedia::audio", "multimedia::video"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+readme.workspace = true
+repository.workspace = true
+categories.workspace = true
 keywords = ["rtmp"]
 
 
@@ -16,20 +18,29 @@ rtmps = ["native-tls", "tokio-native-tls"]
 
 
 [dependencies]
-bytes = "^0.5"
-rml_rtmp = "^0.3"
-thiserror = "^1.0"
-anyhow = "^1.0"
-log = "^0.4"
-serde = { version = "^1.0", features = ["derive"] }
-futures = "0.3.5"
-tokio-util = { version = "0.3.1", features = ["codec"] }
-native-tls = { version = "0.2", optional = true }
-tokio-native-tls = { version = "0.1.0", optional = true }
-javelin-types = { version = "^0.4.0-dev.1", path = "../javelin-types" }
-javelin-core = { version = "^0.4.0-dev.1", path = "../javelin-core" }
+anyhow.workspace = true
+bytes.workspace = true
+futures.workspace = true
+javelin-types.workspace = true
+javelin-core.workspace = true
+rml_rtmp = "0.8"
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dependencies.native-tls]
+version = "0.2"
+optional = true
 
 [dependencies.tokio]
-version = "0.2.21"
-default-features = false
-features = ["rt-core", "stream", "sync", "time", "tcp"]
+workspace = true
+features = ["rt", "sync", "net"]
+
+[dependencies.tokio-native-tls]
+version = "0.3.0"
+optional = true
+
+[dependencies.tokio-util]
+version = "0.7.1"
+features = ["codec"]
+

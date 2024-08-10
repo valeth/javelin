@@ -1,32 +1,32 @@
 [package]
 name = "javelin-hls"
-version = "0.4.0-dev.1"
-authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 description = "Simple streaming server (HLS)"
-license = "GPL-3.0"
-edition = "2018"
-repository = "https://gitlab.com/valeth/javelin.git"
-categories = ["multimedia", "multimedia::audio", "multimedia::video"]
-keywords = ["http-live-streaming"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+readme.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 
 [dependencies]
-log = "^0.4"
-anyhow = "^1.0"
-serde = { version = "^1.0", features = ["derive"] }
-chrono = "^0.4"
-m3u8-rs = "1.0"
-tempfile = "3.1"
-warp = { version = "0.2.3", default-features = false }
-javelin-types = { version = "0.4.0-dev.1", path = "../javelin-types" }
-javelin-core = { version = "0.4.0-dev.1", path = "../javelin-core" }
+anyhow.workspace = true
+axum.workspace = true
+chrono.workspace = true
+javelin-types.workspace = true
+javelin-core.workspace = true
+m3u8-rs = "6.0"
+serde.workspace = true
+tempfile = "3.12"
+tracing.workspace = true
 
 [dependencies.javelin-codec]
-version = "0.4.0-dev.1"
+workspace = true
 features = ["mpegts"]
-path = "../javelin-codec"
 
 [dependencies.tokio]
-version = "0.2.21"
-default-features = false
-features = ["rt-core", "stream", "sync", "time"]
+workspace = true
+features = ["rt", "sync"]

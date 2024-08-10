@@ -1,29 +1,28 @@
 [package]
 name = "javelin-core"
-version = "0.4.0-dev.1"
-authors = ["Patrick Auernig <dev.patrick.auernig@gmail.com>"]
 description = "Simple streaming server (shared core components)"
-license = "GPL-3.0"
-edition = "2018"
-repository = "https://gitlab.com/valeth/javelin.git"
-categories = ["multimedia", "multimedia::audio", "multimedia::video"]
-keywords = ["live-streaming"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+readme.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 
 [dependencies]
-anyhow = "^1.0"
-log = "^0.4"
+anyhow.workspace = true
+javelin-types.workspace = true
+tracing.workspace = true
 
 [dependencies.config]
-version = "0.10.1"
+version = "0.14"
 default-features = false
 features = ["yaml"]
 
 [dependencies.tokio]
-version = "0.2.21"
+workspace = true
 default-features = false
-features = ["rt-core", "sync"]
-
-[dependencies.javelin-types]
-version = "0.4.0-dev.1"
-path = "../javelin-types"
+features = ["rt", "sync"]

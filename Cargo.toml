@@ -1,12 +1,68 @@
 [workspace]
+resolver = "2"
 members = [
     "./crates/javelin",
     "./crates/javelin-codec",
-    "./crates/javelin-types",
     "./crates/javelin-core",
-    "./crates/javelin-rtmp",
     "./crates/javelin-hls",
+    "./crates/javelin-rtmp",
+    "./crates/javelin-types",
 ]
+
+
+[workspace.package]
+version = "0.4.0-dev.1"
+authors = ["Patrick Auernig"]
+edition = "2021"
+rust-version = "1.80.1"
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://gitlab.com/valeth/javelin.git"
+categories = ["multimedia", "multimedia::audio", "multimedia::video"]
+keywords = ["audio", "video"]
+
+
+[workspace.dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+axum = "0.7"
+bincode = "1.3"
+bytes = "1.7"
+chrono = "0.4"
+futures = "0.3"
+sqlx = "0.8"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[workspace.dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[workspace.dependencies.tokio]
+version = "1.39"
+default-features = false
+features = ["time", "macros"]
+
+[workspace.dependencies.javelin-core]
+version = "0.4.0-dev.1"
+path = "crates/javelin-core"
+
+[workspace.dependencies.javelin-codec]
+version = "0.4.0-dev.1"
+path = "crates/javelin-codec"
+
+[workspace.dependencies.javelin-types]
+version = "0.4.0-dev.1"
+path = "crates/javelin-types"
+
+[workspace.dependencies.javelin-rtmp]
+version = "0.4.0-dev.1"
+path = "crates/javelin-rtmp"
+
+[workspace.dependencies.javelin-hls]
+version = "0.4.0-dev.1"
+path = "crates/javelin-hls"
 
 
 [profile.release]
