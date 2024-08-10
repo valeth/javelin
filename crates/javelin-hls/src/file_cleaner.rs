@@ -1,21 +1,24 @@
-use {
-    std::{path::PathBuf, fs},
-    tokio::{
-        stream::StreamExt,
-        sync::mpsc,
-        time::{DelayQueue, Instant, Duration},
-    },
-};
+use std::fs;
+use std::path::PathBuf;
+use std::time::Duration;
+
+use futures_delay_queue::delay_queue;
+use futures_intrusive::buffer::GrowingHeapBuf;
+use tokio::sync::mpsc;
+use tracing::{debug, error};
 
 
 type Batch = Vec<PathBuf>;
 type Message = (Duration, Batch);
 pub type Sender = mpsc::UnboundedSender<Message>;
 type Receiver = mpsc::UnboundedReceiver<Message>;
+type DelayQueue = futures_delay_queue::DelayQueue<Batch, GrowingHeapBuf<Batch>>;
+type DelayQueueReceiver = futures_delay_queue::Receiver<Batch>;
 
 
 pub struct FileCleaner {
-    items: DelayQueue<Batch>,
+    queue: DelayQueue,
+    queue_rx: DelayQueueReceiver,
     sender: Sender,
     receiver: Receiver,
 }
@@ -25,8 +28,11 @@ impl FileCleaner {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
 
+        let (queue, queue_rx) = delay_queue();
+
         Self {
-            items: DelayQueue::new(),
+            queue,
+            queue_rx,
             sender,
             receiver,
         }
@@ -34,14 +40,17 @@ impl FileCleaner {
 
     pub async fn run(mut self) {
         while let Some((duration, files)) = self.receiver.recv().await {
-            let timestamp = Instant::now() + ((duration / 100) * 150);
-            log::debug!("{} files queued for cleanup at {:?}", files.len(), timestamp);
-            self.items.insert_at(files, timestamp);
+            let timestamp = (duration / 100) * 150;
+            debug!(
+                "{} files queued for cleanup at {:?}",
+                files.len(),
+                timestamp
+            );
+            self.queue.insert(files, timestamp);
 
-            match self.items.next().await {
-                Some(Ok(expired)) => remove_files(expired.get_ref()),
-                Some(Err(why)) => log::error!("{}", why),
-                None => ()
+            match self.queue_rx.receive().await {
+                Some(expired) => remove_files(&expired),
+                None => (),
             }
         }
     }
@@ -53,7 +62,7 @@ impl FileCleaner {
 
 
 fn remove_files(paths: &[PathBuf]) {
-    log::debug!("Cleaning up {} files", paths.len());
+    debug!("Cleaning up {} files", paths.len());
 
     for path in paths {
         remove_file(path);
@@ -62,6 +71,6 @@ fn remove_files(paths: &[PathBuf]) {
 
 fn remove_file(path: &PathBuf) {
     if let Err(why) = fs::remove_file(path) {
-        log::error!("Failed to remove file '{}': {}", path.display(), why);
+        error!("Failed to remove file '{}': {}", path.display(), why);
     }
 }

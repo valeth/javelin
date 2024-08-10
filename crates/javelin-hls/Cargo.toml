@@ -16,12 +16,26 @@ keywords.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 chrono.workspace = true
+futures.workspace = true
 javelin-types.workspace = true
 javelin-core.workspace = true
 m3u8-rs = "6.0"
 serde.workspace = true
 tempfile = "3.12"
 tracing.workspace = true
+
+[dependencies.tower-http]
+version = "0.5"
+features = ["fs"]
+
+# TODO: replace this crate with custom impl
+[dependencies.futures-delay-queue]
+version = "0.6"
+default-features = false
+features = ["tokio"]
+
+[dependencies.futures-intrusive]
+version = "0.5"
 
 [dependencies.javelin-codec]
 workspace = true
