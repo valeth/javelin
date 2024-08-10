@@ -1,8 +1,7 @@
-use {
-    tokio::sync::{mpsc, oneshot, broadcast},
-    javelin_types::Packet,
-    super::{AppName, StreamKey, Event},
-};
+use javelin_types::Packet;
+use tokio::sync::{broadcast, mpsc, oneshot};
+
+use super::{AppName, Event, StreamKey};
 
 
 pub type Responder<P> = oneshot::Sender<P>;

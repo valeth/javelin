@@ -1,8 +1,8 @@
-use {
-    anyhow::Result,
-    javelin_types::{Packet, PacketType},
-    super::transport::{IncomingBroadcast, OutgoingBroadcast, Message},
-};
+use anyhow::Result;
+use javelin_types::{Packet, PacketType};
+use tracing::{error, info};
+
+use super::transport::{IncomingBroadcast, Message, OutgoingBroadcast};
 
 
 pub struct Session {
@@ -38,24 +38,29 @@ impl Session {
     fn handle_message(&mut self, message: Message) {
         match message {
             Message::Packet(packet) => {
-                self.set_cache(&packet).expect("Failed to set session cache");
+                self.set_cache(&packet)
+                    .expect("Failed to set session cache");
                 self.broadcast_packet(packet);
-            },
+            }
             Message::GetInitData(responder) => {
-                let response = (self.metadata.clone(), self.video_seq_header.clone(), self.audio_seq_header.clone());
+                let response = (
+                    self.metadata.clone(),
+                    self.video_seq_header.clone(),
+                    self.audio_seq_header.clone(),
+                );
                 if responder.send(response).is_err() {
-                    log::error!("Failed to send init data");
+                    error!("Failed to send init data");
                 }
-            },
+            }
             Message::Disconnect => {
                 self.closing = true;
-            },
+            }
         }
     }
 
     fn broadcast_packet(&self, packet: Packet) {
         if self.outgoing.receiver_count() != 0 && self.outgoing.send(packet).is_err() {
-            log::error!("Failed to broadcast packet");
+            error!("Failed to broadcast packet");
         }
     }
 
@@ -63,14 +68,14 @@ impl Session {
         match packet.kind {
             PacketType::Meta if self.metadata.is_none() => {
                 self.metadata = Some(packet.clone());
-            },
+            }
             PacketType::Video if self.video_seq_header.is_none() => {
                 self.video_seq_header = Some(packet.clone());
-            },
+            }
             PacketType::Audio if self.audio_seq_header.is_none() => {
                 self.audio_seq_header = Some(packet.clone());
             }
-            _ => ()
+            _ => (),
         }
 
         Ok(())
@@ -79,6 +84,6 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        log::info!("Closing session");
+        info!("Closing session");
     }
 }

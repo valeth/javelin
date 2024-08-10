@@ -1,22 +1,21 @@
-use {
-    std::{collections::HashMap, sync::Arc},
-    anyhow::{Result, bail},
-    tokio::sync::{broadcast, mpsc, RwLock},
-    javelin_types::models::UserRepository,
-    super::{
-        instance::Session,
-        transport::{
-            ManagerHandle, ManagerReceiver, ManagerMessage,
-            Trigger,
-            Handle, OutgoingBroadcast,
-        },
-        AppName, Event,
-    },
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use anyhow::{bail, Result};
+use javelin_types::models::UserRepository;
+use tokio::sync::{broadcast, mpsc, RwLock};
+use tracing::{debug, error};
+
+use super::instance::Session;
+use super::transport::{
+    Handle, ManagerHandle, ManagerMessage, ManagerReceiver, OutgoingBroadcast, Trigger,
 };
+use super::{AppName, Event};
 
 
 pub struct Manager<D>
-    where D: UserRepository + Send + Sync + 'static
+where
+    D: UserRepository + Send + Sync + 'static,
 {
     handle: ManagerHandle,
     incoming: ManagerReceiver,
@@ -26,14 +25,21 @@ pub struct Manager<D>
 }
 
 impl<D> Manager<D>
-    where D: UserRepository + Send + Sync + 'static
+where
+    D: UserRepository + Send + Sync + 'static,
 {
     pub fn new(user_repo: D) -> Self {
         let (handle, incoming) = mpsc::unbounded_channel();
         let sessions = Arc::new(RwLock::new(HashMap::new()));
         let triggers = Arc::new(RwLock::new(HashMap::new()));
 
-        Self { handle, incoming, sessions, triggers, user_repo }
+        Self {
+            handle,
+            incoming,
+            sessions,
+            triggers,
+            user_repo,
+        }
     }
 
     pub fn handle(&self) -> ManagerHandle {
@@ -63,7 +69,7 @@ impl<D> Manager<D>
                 if let Err(_) = responder.send(handle) {
                     bail!("Failed to send response");
                 }
-            },
+            }
             ManagerMessage::JoinSession((name, responder)) => {
                 let sessions = self.sessions.read().await;
                 if let Some((handle, watcher)) = sessions.get(&name) {
@@ -71,19 +77,16 @@ impl<D> Manager<D>
                         bail!("Failed to send response");
                     }
                 }
-            },
+            }
             ManagerMessage::ReleaseSession(name) => {
                 let mut sessions = self.sessions.write().await;
                 sessions.remove(&name);
-            },
+            }
             ManagerMessage::RegisterTrigger(event, trigger) => {
-                log::debug!("Registering trigger for {}", event);
+                debug!("Registering trigger for {}", event);
                 let mut triggers = self.triggers.write().await;
-                triggers
-                    .entry(event)
-                    .or_insert_with(Vec::new)
-                    .push(trigger);
-            },
+                triggers.entry(event).or_insert_with(Vec::new).push(trigger);
+            }
         }
 
         Ok(())
@@ -92,7 +95,7 @@ impl<D> Manager<D>
     pub async fn run(mut self) {
         while let Some(message) = self.incoming.recv().await {
             if let Err(err) = self.process_message(message).await {
-                log::error!("{}", err);
+                error!("{}", err);
             };
         }
     }
