@@ -1,0 +1,18 @@
+edition = "2021"
+
+# Just enforce it here as well instead of relying on editorconfig alone
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+
+imports_granularity = "Module"
+group_imports = "StdExternalCrate"
+
+force_multiline_blocks = false
+fn_single_line = false
+comment_width = 100
+wrap_comments = true
+hex_literal_case = "Upper"
+blank_lines_upper_bound = 2
+overflow_delimited_expr = true
+reorder_impl_items = true
