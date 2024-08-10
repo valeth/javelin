@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    "./javelin",
-    "./javelin-codec",
-    "./javelin-types",
-    "./javelin-core",
-    "./javelin-rtmp",
-    "./javelin-hls",
+    "./crates/javelin",
+    "./crates/javelin-codec",
+    "./crates/javelin-types",
+    "./crates/javelin-core",
+    "./crates/javelin-rtmp",
+    "./crates/javelin-hls",
 ]
 
 
