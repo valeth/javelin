@@ -1,10 +1,7 @@
-use {
-    std::{
-        path::PathBuf,
-        net::SocketAddr,
-    },
-    serde::Deserialize,
-};
+use std::net::SocketAddr;
+use std::path::PathBuf;
+
+use serde::Deserialize;
 
 
 #[derive(Debug, Clone, Deserialize)]
@@ -50,7 +47,7 @@ impl Default for WebConfig {
 
 
 fn default_root_dir() -> PathBuf {
-    PathBuf::from("./tmp/stream")
+    PathBuf::from("./data/hls")
 }
 
 fn default_web_addr() -> SocketAddr {

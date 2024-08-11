@@ -10,10 +10,7 @@
 /.vscode
 
 # Misc
-/db
-/cert*
+/data
+/config
 /.env*
-/tmp
-/config/**/*.yml
-config.yml
 *.log

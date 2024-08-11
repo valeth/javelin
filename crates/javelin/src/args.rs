@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(version, about)]
 pub struct Args {
-    #[arg(short, long, default_value = "./")]
+    #[arg(short, long, default_value = "./config")]
     pub config_dir: PathBuf,
 
     #[command(subcommand)]
