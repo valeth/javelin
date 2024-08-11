@@ -7,34 +7,31 @@ mod database;
 mod management;
 
 
-use {
-    anyhow::Result,
-    javelin_core::{
-        session,
-        config::{self, Config},
-    },
-    database::Database,
-};
+use anyhow::Result;
+use clap::Parser;
+use database::Database;
+use javelin_core::config::{self, Config};
+use javelin_core::session;
+
+use self::args::{Args, Command};
 
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    if let Err(why) = init_logger() {
+    if let Err(why) = init_tracing() {
         eprintln!("Failed to initialize logger: {}", why);
     };
 
-    let args = args::build();
-    let config_dir = args.value_of("config_dir").unwrap_or_default();
-    let config = config::from_path(config_dir)?;
+    let args = Args::parse();
+    let config = config::from_path(&args.config_dir)?;
 
-    match args.subcommand() {
-        ("permit-stream", Some(args)) => {
-            management::permit_stream(args, &config).await?;
-        },
-        ("run", _) | ("", _) => {
+    match args.cmd {
+        Command::PermitStream { user, key } => {
+            management::permit_stream(&user, &key, &config).await?;
+        }
+        Command::Run => {
             run_app(&config).await?;
-        },
-        _ => ()
+        }
     }
 
     Ok(())
@@ -47,9 +44,7 @@ async fn run_app(config: &Config) -> Result<()> {
 
     let session = session::Manager::new(database_handle.clone());
     let session_handle = session.handle();
-    handles.push(tokio::spawn({
-        session.run()
-    }));
+    handles.push(tokio::spawn(session.run()));
 
     #[cfg(feature = "hls")]
     handles.push(tokio::spawn({
@@ -69,48 +64,30 @@ async fn run_app(config: &Config) -> Result<()> {
     Ok(())
 }
 
-fn init_logger() -> Result<()> {
-    use {
-        fern::{Dispatch, colors::ColoredLevelConfig, log_file},
-        log::LevelFilter,
-        chrono::{Utc, Local as LocalTime},
+fn init_tracing() -> Result<()> {
+    use tracing::Level;
+    use tracing_subscriber::filter::Targets;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    let max_level = if cfg!(debug_assertions) {
+        Level::TRACE
+    } else {
+        Level::INFO
     };
 
-    let colors = ColoredLevelConfig::default();
-    Dispatch::new()
-        .level(LevelFilter::Info)
-        .level_for("javelin", LevelFilter::Debug)
-        .level_for("javelin_rtmp", LevelFilter::Debug)
-        .level_for("javelin_hls", LevelFilter::Debug)
-        .level_for("javelin_types", LevelFilter::Debug)
-        .level_for("javelin_core", LevelFilter::Debug)
-        .level_for("javelin_codec", LevelFilter::Warn)
-        .chain(Dispatch::new()
-            .format(|out, msg, record| {
-                out.finish(format_args!(
-                    "level={:5} timestamp={} target={}  {}",
-                    record.level(),
-                    Utc::now().format("%Y-%m-%dT%H:%M:%S"),
-                    record.target(),
-                    msg
-                ))
-            })
-            // TODO: implement auto rotating file logger
-            .chain(log_file("javelin.log")?)
-        )
-        .chain(Dispatch::new()
-            .format(move |out, msg, record| {
-                out.finish(format_args!(
-                    "[{:5}] {} ({}) {}",
-                    colors.color(record.level()),
-                    LocalTime::now().format("%Y-%m-%d %H:%M:%S"),
-                    record.target(),
-                    msg
-                ))
-            })
-            .chain(std::io::stdout())
-        )
-        .apply()?;
+    let filter_layer = Targets::new()
+        .with_target("javelin", max_level)
+        .with_target("javelin_rtmp", max_level)
+        .with_target("javelin_hls", max_level)
+        .with_target("javelin_core", max_level)
+        .with_target("javelin_codec", max_level)
+        .with_default(Level::ERROR);
+
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::Layer::default())
+        .with(filter_layer)
+        .try_init()?;
 
     Ok(())
 }
