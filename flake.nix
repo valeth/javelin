@@ -1,5 +1,5 @@
 {
-    description = "Javelin development shell";
+    description = "Javelin development environment";
 
     inputs = {
         nixpkgs.url      = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -10,26 +10,29 @@
     outputs = { nixpkgs, flake-utils, rust-overlay, ... }:
         flake-utils.lib.eachDefaultSystem (system:
             let
-                lib = nixpkgs.lib;
                 overlays = [ (import rust-overlay) ];
                 pkgs = import nixpkgs { inherit system overlays; };
-                toolchains = [
-                    (pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
-                    (lib.hiPrio pkgs.rust-bin.nightly."2024-08-01".rustfmt)
+
+                rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+                rustNightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.minimal.override {
+                    extensions = [ "rustfmt" ];
+                    targets = [ "x86_64-unknown-linux-gnu" ];
+                });
+
+                buildTools = [
+                    rustToolchain
+                    rustNightlyToolchain
                 ];
-            in
-            with pkgs; {
-                devShells.default = mkShell {
+            in {
+                devShells.default = pkgs.mkShell {
                     name = "javelin";
 
-                    nativeBuildInputs = [
-                        pkg-config
-                    ];
+                    nativeBuildInputs = buildTools;
 
-                    packages = [
+                    packages = with pkgs; [
                         cargo-deny
                         sqlx-cli
-                    ] ++ toolchains;
+                    ];
                 };
             });
 }
