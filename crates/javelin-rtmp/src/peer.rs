@@ -102,7 +102,7 @@ where
             PacketType::Meta => self.proto.pack_metadata(packet)?,
             PacketType::Video => self.proto.pack_video(packet)?,
             PacketType::Audio => self.proto.pack_audio(packet)?,
-            _ => return Ok(())
+            _ => return Ok(()),
         };
         let duration = self.config.connection_timeout;
         let bytes = Bytes::from(bytes);

@@ -46,8 +46,7 @@ impl Service {
             let addr = self.config.web.addr;
 
             let serve_dir = ServeDir::new(hls_root);
-            let routes = Router::new()
-                .nest_service("/hls", serve_dir);
+            let routes = Router::new().nest_service("/hls", serve_dir);
 
             tokio::spawn(async move {
                 let listener = TcpListener::bind(addr).await.unwrap();

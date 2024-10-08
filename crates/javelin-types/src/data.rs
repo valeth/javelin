@@ -1,13 +1,11 @@
-use {
-    std::{
-        convert::TryFrom,
-        collections::HashMap,
-    },
-    bytes::Bytes,
-    serde::{Serialize, Deserialize},
-    crate::{Error, Packet, PacketType},
-};
+use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::str::FromStr;
+
+use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+
+use crate::{Error, Packet, PacketType};
 
 
 type StringMap = HashMap<String, String>;
@@ -61,13 +59,11 @@ pub struct Metadata(StringMap);
 
 impl Metadata {
     pub fn get<V, K>(&self, key: K) -> Option<V>
-        where K: AsRef<str>,
-              V: FromStr
+    where
+        K: AsRef<str>,
+        V: FromStr,
     {
-        self.0
-            .get(key.as_ref())
-            .map(|v| v.parse().ok())
-            .flatten()
+        self.0.get(key.as_ref()).map(|v| v.parse().ok()).flatten()
     }
 }
 

@@ -174,9 +174,7 @@ async fn handle_request(
         Ok(peer) => {
             trace!("Accepting request");
             let sock = conn_req.accept(None).await?;
-            tokio::spawn(async move {
-                handle_peer(peer, sock).await
-            });
+            tokio::spawn(async move { handle_peer(peer, sock).await });
         }
         Err(err) => {
             reject_request(conn_req, err).await?;
