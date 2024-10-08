@@ -46,6 +46,8 @@ async fn run_app(config: &Config) -> Result<()> {
     let session_handle = session.handle();
     handles.push(tokio::spawn(session.run()));
 
+    tokio::spawn(javelin_srt::Service::new(session_handle.clone(), &config).run());
+
     #[cfg(feature = "hls")]
     handles.push(tokio::spawn({
         javelin_hls::Service::new(session_handle.clone(), &config).run()
@@ -79,6 +81,7 @@ fn init_tracing() -> Result<()> {
     let filter_layer = Targets::new()
         .with_target("javelin", max_level)
         .with_target("javelin_rtmp", max_level)
+        .with_target("javelin_srt", max_level)
         .with_target("javelin_hls", max_level)
         .with_target("javelin_core", max_level)
         .with_target("javelin_codec", max_level)

@@ -11,6 +11,7 @@ pub enum PacketType {
     Meta,
     Video,
     Audio,
+    Bytes,
 }
 
 

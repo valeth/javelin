@@ -36,6 +36,9 @@ features = ["sqlite"]
 version = "4.5"
 features = ["derive"]
 
+[dependencies.javelin-srt]
+workspace = true
+
 [dependencies.javelin-rtmp]
 workspace = true
 optional = true

@@ -7,6 +7,7 @@ members = [
     "./crates/javelin-hls",
     "./crates/javelin-rtmp",
     "./crates/javelin-types",
+    "./crates/javelin-srt",
 ]
 
 
@@ -70,6 +71,10 @@ path = "crates/javelin-rtmp"
 [workspace.dependencies.javelin-hls]
 version = "0.4.0-dev.1"
 path = "crates/javelin-hls"
+
+[workspace.dependencies.javelin-srt]
+version = "0.4.0-dev.1"
+path = "crates/javelin-srt"
 
 
 [profile.release]

@@ -1,0 +1,39 @@
+[package]
+name = "javelin-srt"
+description = "Simple streaming server (SRT)"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+readme.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords = ["srt"]
+
+
+[lib]
+crate-type = ["rlib", "dylib"]
+
+
+[dependencies]
+serde.workspace = true
+chrono.workspace = true
+futures.workspace = true
+javelin-types.workspace = true
+javelin-core.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+mpeg2ts = "0.3"
+base64 = "0.22"
+
+[dependencies.srt-protocol]
+version = "0.4"
+# git = "https://github.com/russelltg/srt-rs"
+# branch = "main"
+
+[dependencies.srt-tokio]
+version = "0.4"
+# git = "https://github.com/russelltg/srt-rs"
+# branch = "main"
