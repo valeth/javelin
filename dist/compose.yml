@@ -17,13 +17,3 @@ services:
       - "hls_data:/var/data"
       - "./config:/app/config"
 
-  mongodb:
-    image: "mongo:4.2"
-    environment:
-      MONGO_INITDB: "javelin"
-      MONGO_INITDB_ROOT_USERNAME: "dev"
-      MONGO_INITDB_ROOT_PASSWORD: "s3cur3"
-    volumes:
-      - "mongodb0:/data/db"
-    ports:
-      - "27017:27017"
