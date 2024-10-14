@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use futures::{SinkExt, StreamExt};
 use javelin_core::session::Message;
-use javelin_types::{Packet, PacketType};
+use javelin_types::{packet, Packet};
 use srt_tokio::SrtSocket;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::broadcast::Receiver;
@@ -73,13 +73,21 @@ async fn handle_receiving_peer(
 
     loop {
         match session_receiver.recv().await {
-            Ok(packet) => {
+            Ok(Packet {
+                content_type: packet::CONTAINER_MPEGTS,
+                payload,
+                ..
+            }) => {
                 let timestamp = Instant::now();
-                match sock.send((timestamp, packet.payload)).await {
+                match sock.send((timestamp, payload)).await {
                     Ok(_) => (),
                     Err(err) if err.kind() == io::ErrorKind::NotConnected => break,
                     Err(err) => return Err(err.into()),
                 }
+            }
+            Ok(Packet { content_type, .. }) => {
+                trace!(?content_type, "Cannot handle packet at this point");
+                break;
             }
             Err(RecvError::Closed) => {
                 break;
@@ -107,7 +115,7 @@ async fn handle_publishing_peer(
     while let Some(data) = sock.next().await {
         let (_, bytes) = data?;
         let timestamp = chrono::Utc::now().timestamp();
-        let packet = Packet::new(PacketType::Bytes, Some(timestamp), bytes);
+        let packet = Packet::new(packet::CONTAINER_MPEGTS, Some(timestamp), bytes);
         if session_sender.send(Message::Packet(packet)).is_err() {
             break;
         }

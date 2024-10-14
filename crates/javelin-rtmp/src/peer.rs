@@ -1,12 +1,12 @@
 use bytes::Bytes;
 use futures::{SinkExt, TryStreamExt};
 use javelin_core::session::{self, ManagerMessage, Message};
-use javelin_types::{Packet, PacketType};
+use javelin_types::{packet, Packet};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{self, mpsc, oneshot};
 use tokio::time::timeout;
 use tokio_util::codec::{BytesCodec, Framed};
-use tracing::{debug, info};
+use tracing::{debug, error, info, trace};
 
 use crate::config::Config;
 use crate::error::Error;
@@ -98,11 +98,14 @@ where
     }
 
     async fn handle_return_packet(&mut self, packet: Packet) -> Result<(), Error> {
-        let bytes = match packet.kind {
-            PacketType::Meta => self.proto.pack_metadata(packet)?,
-            PacketType::Video => self.proto.pack_video(packet)?,
-            PacketType::Audio => self.proto.pack_audio(packet)?,
-            _ => return Ok(()),
+        let bytes = match packet.content_type {
+            packet::METADATA => self.proto.pack_metadata(packet)?,
+            packet::FLV_VIDEO_H264 => self.proto.pack_video(packet)?,
+            packet::FLV_AUDIO_AAC => self.proto.pack_audio(packet)?,
+            _ => {
+                trace!(content_type = ?packet.content_type, "Cannot handle content type");
+                return Err(Error::ReturnPacketFailed(self.id));
+            }
         };
         let duration = self.config.connection_timeout;
         let bytes = Bytes::from(bytes);

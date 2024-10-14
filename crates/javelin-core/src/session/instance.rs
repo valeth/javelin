@@ -1,5 +1,5 @@
 use anyhow::Result;
-use javelin_types::{Packet, PacketType};
+use javelin_types::{packet, Packet};
 use tracing::{error, info};
 
 use super::transport::{IncomingBroadcast, Message, OutgoingBroadcast};
@@ -65,14 +65,14 @@ impl Session {
     }
 
     fn set_cache(&mut self, packet: &Packet) -> Result<()> {
-        match packet.kind {
-            PacketType::Meta if self.metadata.is_none() => {
+        match packet.content_type {
+            packet::METADATA if self.metadata.is_none() => {
                 self.metadata = Some(packet.clone());
             }
-            PacketType::Video if self.video_seq_header.is_none() => {
+            packet::FLV_VIDEO_H264 if self.video_seq_header.is_none() => {
                 self.video_seq_header = Some(packet.clone());
             }
-            PacketType::Audio if self.audio_seq_header.is_none() => {
+            packet::FLV_AUDIO_AAC if self.audio_seq_header.is_none() => {
                 self.audio_seq_header = Some(packet.clone());
             }
             _ => (),

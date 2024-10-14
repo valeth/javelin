@@ -5,7 +5,7 @@ use std::str::FromStr;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 
-use crate::{Error, Packet, PacketType};
+use crate::{packet, Error, Packet};
 
 
 type StringMap = HashMap<String, String>;
@@ -107,7 +107,7 @@ impl TryFrom<Metadata> for Packet {
 
     fn try_from(val: Metadata) -> Result<Self, Self::Error> {
         Ok(Self {
-            kind: PacketType::Meta,
+            content_type: packet::METADATA,
             timestamp: None,
             payload: Bytes::try_from(val)?,
         })

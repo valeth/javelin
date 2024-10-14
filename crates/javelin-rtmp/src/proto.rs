@@ -1,7 +1,7 @@
 use std::convert::{TryFrom, TryInto};
 
 use bytes::Bytes;
-use javelin_types::{Packet, PacketType};
+use javelin_types::{packet, Packet};
 use rml_rtmp::handshake::{Handshake, HandshakeProcessResult, PeerType};
 use rml_rtmp::sessions::{
     ServerSession, ServerSessionConfig, ServerSessionEvent, ServerSessionResult,
@@ -257,19 +257,19 @@ impl Protocol {
             AudioDataReceived {
                 data, timestamp, ..
             } => {
-                let packet = Packet::new_audio(timestamp.value, data);
+                let packet = Packet::new(packet::FLV_AUDIO_AAC, Some(timestamp.value), data);
                 self.emit(Event::SendPacket(packet));
             }
             VideoDataReceived {
                 data, timestamp, ..
             } => {
-                let packet = Packet::new_video(timestamp.value, data);
+                let packet = Packet::new(packet::FLV_VIDEO_H264, Some(timestamp.value), data);
                 self.emit(Event::SendPacket(packet));
             }
             StreamMetadataChanged { metadata, .. } => {
                 let metadata = convert::from_metadata(metadata);
                 let payload = Bytes::try_from(metadata).unwrap();
-                let packet = Packet::new::<u32, Bytes>(PacketType::Meta, None, payload);
+                let packet = Packet::new::<u32, Bytes>(packet::METADATA, None, payload);
                 self.emit(Event::SendPacket(packet));
             }
             _ => (),

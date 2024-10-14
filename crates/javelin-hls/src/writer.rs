@@ -9,7 +9,7 @@ use javelin_codec::avc::{self, AvcCoder};
 use javelin_codec::mpegts::TransportStream;
 use javelin_codec::{flv, FormatReader, FormatWriter};
 use javelin_core::session;
-use javelin_types::{Packet, PacketType};
+use javelin_types::{packet, Packet};
 use tracing::{debug, error, info, warn};
 
 use crate::config::Config;
@@ -158,9 +158,17 @@ impl Writer {
     }
 
     fn handle_packet(&mut self, packet: Packet) -> Result<()> {
-        match packet.kind {
-            PacketType::Video => self.handle_video(packet.timestamp.unwrap(), packet.as_ref()),
-            PacketType::Audio => self.handle_audio(packet.timestamp.unwrap(), packet.as_ref()),
+        match packet {
+            Packet {
+                content_type: packet::FLV_VIDEO_H264,
+                timestamp: Some(ts),
+                payload,
+            } => self.handle_video(ts, &payload),
+            Packet {
+                content_type: packet::FLV_AUDIO_AAC,
+                timestamp: Some(ts),
+                payload,
+            } => self.handle_audio(ts, &payload),
             _ => Ok(()),
         }
     }

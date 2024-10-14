@@ -1,6 +1,6 @@
 pub mod data;
 pub mod models;
-pub mod transport;
+pub mod packet;
 
 
 pub type Error = Box<dyn std::error::Error>;
@@ -10,4 +10,4 @@ pub type Error = Box<dyn std::error::Error>;
 pub use async_trait::async_trait;
 
 pub use self::data::{Metadata, Timestamp};
-pub use self::transport::{Packet, PacketType};
+pub use self::packet::Packet;
