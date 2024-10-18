@@ -9,6 +9,11 @@
 
 
 
+## Changelog
+
+See [docs/CHANGELOG.md] for a list of changes.
+
+
 ## Development
 
 See [docs/CONTRIBUTING.md] if you intend to contribute.
