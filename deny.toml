@@ -8,26 +8,57 @@ targets = [
 unknown-registry = "deny"
 unknown-git = "deny"
 
+[sources.allow-org]
+github = [
+    "valeth",
+]
+
 
 [advisories]
-version = 2
 ignore = [
-    # # vulnerable h2 crate is only used by http client
-    # "RUSTSEC-2024-0003"
+    "RUSTSEC-2024-0320" # TODO: rewrite config handling and remove yaml-rust
 ]
+
 
 [licenses]
 private.ignore = true
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+]
 
-# ring is pulled in by rustls
 [[licenses.exceptions]]
-name = "ring"
-allow = ["ISC", "MIT", "OpenSSL"]
+crate = "unicode-ident"
+allow = ["Unicode-DFS-2016"]
 
-[[licenses.clarify]]
-name = "ring"
-expression = "ISC AND MIT AND OpenSSL"
-license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+[[licenses.exceptions]]
+crate = "javelin"
+allow = ["GPL-3.0"]
+
+[[licenses.exceptions]]
+crate = "javelin-codec"
+allow = ["GPL-3.0"]
+
+[[licenses.exceptions]]
+crate = "javelin-core"
+allow = ["GPL-3.0"]
+
+[[licenses.exceptions]]
+crate = "javelin-hls"
+allow = ["GPL-3.0"]
+
+[[licenses.exceptions]]
+crate = "javelin-rtmp"
+allow = ["GPL-3.0"]
+
+[[licenses.exceptions]]
+crate = "javelin-srt"
+allow = ["GPL-3.0"]
+
+[[licenses.exceptions]]
+crate = "javelin-types"
+allow = ["GPL-3.0"]
 
 
 [bans]
@@ -41,8 +72,13 @@ workspace-default-features = "allow"
 name = "openssl"
 
 [[bans.deny]]
+name = "bytes"
+version = "<1"
+
+[[bans.deny]]
 name = "tokio"
 version = "<1"
+
 
 [[bans.deny]]
 name = "futures"
@@ -52,7 +88,17 @@ version = "<0.3"
 name = "uuid"
 version = "<1"
 
-# Some core crates still depend on syn 1 (mostly sqlx)
 [[bans.skip]]
 name = "syn"
 version = "<2.0"
+reason = "some core crates still depend on syn version 1 (mostly sqlx)"
+
+[[bans.skip]]
+name = "sync_wrapper"
+version = "=0.1"
+# reason = "axum depends on two different versions through tower"
+
+[[bans.skip]]
+name = "hashbrown"
+version = "=0.14"
+reason = "sqlx depends on two different versions"
