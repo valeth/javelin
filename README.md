@@ -11,9 +11,15 @@
 
 ## Changelog
 
-See [docs/CHANGELOG.md] for a list of changes.
+See [CHANGELOG.md] for a list of changes.
 
 
 ## Development
 
-See [docs/CONTRIBUTING.md] if you intend to contribute.
+See [CONTRIBUTING.md] if you intend to contribute.
+
+
+<!-- links -->
+
+[CHANGELOG.md]: docs/CHANGELOG.md
+[CONTRIBUTING.md]: docs/CONTRIBUTING.md
