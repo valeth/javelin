@@ -8,18 +8,17 @@
 > Use at your own risk.
 
 
-
 ## Changelog
 
-See [CHANGELOG.md] for a list of changes.
+See the [Changelog] for a detailed list of changes.
 
 
 ## Development
 
-See [CONTRIBUTING.md] if you intend to contribute.
+Check out our [Contribution Guide] if you want to contribute.
 
 
 <!-- links -->
 
-[CHANGELOG.md]: docs/CHANGELOG.md
-[CONTRIBUTING.md]: docs/CONTRIBUTING.md
+[Changelog]: docs/CHANGELOG.md
+[Contribution Guide]: docs/CONTRIBUTING.md
