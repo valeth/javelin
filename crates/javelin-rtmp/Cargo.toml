@@ -23,7 +23,6 @@ bytes.workspace = true
 futures.workspace = true
 javelin-types.workspace = true
 javelin-core.workspace = true
-rml_rtmp = "0.8"
 serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
@@ -44,3 +43,7 @@ optional = true
 version = "0.7.1"
 features = ["codec"]
 
+[dependencies.rml_rtmp]
+version = "0.8"
+git = "https://github.com/valeth/rust-media-libs"
+branch = "update-deps"
