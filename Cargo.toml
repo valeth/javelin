@@ -16,7 +16,6 @@ version = "0.4.0-dev.1"
 authors = ["Patrick Auernig"]
 edition = "2021"
 rust-version = "1.82.0"
-license-file = "LICENSE"
 readme = "README.md"
 repository = "https://gitlab.com/valeth/javelin.git"
 categories = ["multimedia", "multimedia::audio", "multimedia::video"]

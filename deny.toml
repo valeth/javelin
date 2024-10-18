@@ -32,34 +32,6 @@ allow = [
 crate = "unicode-ident"
 allow = ["Unicode-DFS-2016"]
 
-[[licenses.exceptions]]
-crate = "javelin"
-allow = ["GPL-3.0"]
-
-[[licenses.exceptions]]
-crate = "javelin-codec"
-allow = ["GPL-3.0"]
-
-[[licenses.exceptions]]
-crate = "javelin-core"
-allow = ["GPL-3.0"]
-
-[[licenses.exceptions]]
-crate = "javelin-hls"
-allow = ["GPL-3.0"]
-
-[[licenses.exceptions]]
-crate = "javelin-rtmp"
-allow = ["GPL-3.0"]
-
-[[licenses.exceptions]]
-crate = "javelin-srt"
-allow = ["GPL-3.0"]
-
-[[licenses.exceptions]]
-crate = "javelin-types"
-allow = ["GPL-3.0"]
-
 
 [bans]
 multiple-versions = "deny"
