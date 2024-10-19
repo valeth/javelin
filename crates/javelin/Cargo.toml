@@ -5,6 +5,7 @@ version.workspace = true
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license-file.workspace = true
 readme.workspace = true
 repository.workspace = true
 categories.workspace = true
