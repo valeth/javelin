@@ -6,7 +6,7 @@
 2. Create a new branch in your fork
 3. Make some changes
 4. Send a Merge Request to the upstream repository
-    a. Periodically rebase your branch on top of the main branch until it is ready to be merged
+    1. Periodically rebase your branch on top of the main branch until it is ready to be merged
 
 
 ## Commit Messages
