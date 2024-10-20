@@ -1,19 +1,19 @@
 #![warn(clippy::all)]
-#![warn(rust_2018_idioms)]
-#![allow(elided_lifetimes_in_paths)]
 
-mod args;
-mod database;
-mod management;
-
+use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
-use database::Database;
-use javelin_core::config::{self, Config};
-use javelin_core::session;
+use javelin::database::Database;
+use javelin_core::{config, session};
 
-use self::args::{Args, Command};
+
+#[derive(Parser)]
+#[command(version, about)]
+pub struct ServerArgs {
+    #[arg(short, long, default_value = "./config")]
+    pub config_dir: PathBuf,
+}
 
 
 #[tokio::main]
@@ -22,40 +22,28 @@ async fn main() -> Result<()> {
         eprintln!("Failed to initialize logger: {}", why);
     };
 
-    let args = Args::parse();
+    let args = ServerArgs::parse();
+
     let config = config::from_path(&args.config_dir)?;
 
-    match args.cmd {
-        Command::PermitStream { user, key } => {
-            management::permit_stream(&user, &key, &config).await?;
-        }
-        Command::Run => {
-            run_app(&config).await?;
-        }
-    }
-
-    Ok(())
-}
-
-async fn run_app(config: &Config) -> Result<()> {
     let mut handles = Vec::new();
 
-    let database_handle = Database::new(config).await;
+    let database_handle = Database::new(&config).await;
 
     let session = session::Manager::new(database_handle.clone());
     let session_handle = session.handle();
     handles.push(tokio::spawn(session.run()));
 
-    tokio::spawn(javelin_srt::Service::new(session_handle.clone(), config).run());
+    tokio::spawn(javelin_srt::Service::new(session_handle.clone(), &config).run());
 
     #[cfg(feature = "hls")]
     handles.push(tokio::spawn({
-        javelin_hls::Service::new(session_handle.clone(), config).run()
+        javelin_hls::Service::new(session_handle.clone(), &config).run()
     }));
 
     #[cfg(feature = "rtmp")]
     handles.push(tokio::spawn({
-        javelin_rtmp::Service::new(session_handle, config).run()
+        javelin_rtmp::Service::new(session_handle, &config).run()
     }));
 
     // Wait for all spawned processes to complete
@@ -65,6 +53,7 @@ async fn run_app(config: &Config) -> Result<()> {
 
     Ok(())
 }
+
 
 fn init_tracing() -> Result<()> {
     use tracing::Level;

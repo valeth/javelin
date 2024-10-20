@@ -1,8 +1,7 @@
 use anyhow::Result;
 use javelin_core::Config;
 use javelin_types::async_trait;
-use javelin_types::models::{Error, User, UserRepository};
-use sqlx::Executor;
+pub use javelin_types::models::{Error, User, UserRepository};
 use tracing::{debug, trace};
 
 

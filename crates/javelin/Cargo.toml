@@ -11,6 +11,7 @@ repository.workspace = true
 categories.workspace = true
 keywords.workspace = true
 publish = false
+default-run = "server"
 
 
 [features]
