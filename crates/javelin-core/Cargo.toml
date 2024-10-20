@@ -15,6 +15,7 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
+serde.workspace = true
 javelin-types.workspace = true
 tracing.workspace = true
 

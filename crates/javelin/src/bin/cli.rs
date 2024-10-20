@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use javelin::database::{Database, UserRepository};
-use javelin_core::config::{self, Config};
+use javelin_core::Config;
 
 
 #[derive(Parser)]
@@ -33,7 +33,7 @@ pub enum Command {
 async fn main() -> Result<()> {
     let args = CliArgs::parse();
 
-    let config = config::from_path(&args.config_dir)?;
+    let config = Config::try_from_path(&args.config_dir)?;
 
     match args.cmd {
         Command::PermitStream { user, key } => {

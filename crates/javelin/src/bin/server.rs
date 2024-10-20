@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 use javelin::database::Database;
-use javelin_core::{config, session};
+use javelin_core::Config;
+use javelin_core::session;
 
 
 #[derive(Parser)]
@@ -24,7 +25,7 @@ async fn main() -> Result<()> {
 
     let args = ServerArgs::parse();
 
-    let config = config::from_path(&args.config_dir)?;
+    let config = Config::try_from_path(&args.config_dir)?;
 
     let mut handles = Vec::new();
 

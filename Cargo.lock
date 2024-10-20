@@ -1025,6 +1025,7 @@ dependencies = [
  "anyhow",
  "config",
  "javelin-types",
+ "serde",
  "tokio",
  "tracing",
 ]
