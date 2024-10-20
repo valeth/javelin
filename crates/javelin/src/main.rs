@@ -40,22 +40,22 @@ async fn main() -> Result<()> {
 async fn run_app(config: &Config) -> Result<()> {
     let mut handles = Vec::new();
 
-    let database_handle = Database::new(&config).await;
+    let database_handle = Database::new(config).await;
 
     let session = session::Manager::new(database_handle.clone());
     let session_handle = session.handle();
     handles.push(tokio::spawn(session.run()));
 
-    tokio::spawn(javelin_srt::Service::new(session_handle.clone(), &config).run());
+    tokio::spawn(javelin_srt::Service::new(session_handle.clone(), config).run());
 
     #[cfg(feature = "hls")]
     handles.push(tokio::spawn({
-        javelin_hls::Service::new(session_handle.clone(), &config).run()
+        javelin_hls::Service::new(session_handle.clone(), config).run()
     }));
 
     #[cfg(feature = "rtmp")]
     handles.push(tokio::spawn({
-        javelin_rtmp::Service::new(session_handle, &config).run()
+        javelin_rtmp::Service::new(session_handle, config).run()
     }));
 
     // Wait for all spawned processes to complete

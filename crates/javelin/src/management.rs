@@ -6,7 +6,7 @@ use crate::database::Database;
 
 
 pub async fn permit_stream(user: &str, key: &str, config: &Config) -> Result<()> {
-    let mut database_handle = Database::new(&config).await;
+    let mut database_handle = Database::new(config).await;
 
     database_handle.add_user_with_key(user, key).await?;
 

@@ -27,7 +27,7 @@ pub trait UserRepository {
 
     async fn user_has_key(&self, name: &str, key: &str) -> Result<bool, Error> {
         if let Some(user) = self.user_by_name(name).await? {
-            return Ok(&user.key == key);
+            return Ok(user.key == key);
         }
 
         Ok(false)

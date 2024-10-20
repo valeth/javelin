@@ -16,7 +16,7 @@ use super::AacError;
 // 1    | Frame length flag
 // 1    | Depends on core coder
 // 1    | Extension flag
-///
+//
 #[derive(Debug, Clone)]
 pub struct AudioSpecificConfiguration {
     pub object_type: AudioObjectType,

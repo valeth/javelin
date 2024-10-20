@@ -130,7 +130,7 @@ impl TransportStream {
                 } else {
                     &buf.chunk()[..payload::Bytes::MAX_SIZE]
                 };
-                make_raw_payload(&pes_data)?
+                make_raw_payload(pes_data)?
             };
             buf.advance(raw_payload.len());
 
@@ -160,7 +160,7 @@ impl TransportStream {
             } else {
                 &buf.chunk()[..153]
             };
-            make_raw_payload(&pes_data)?
+            make_raw_payload(pes_data)?
         };
         buf.advance(data.len());
 
@@ -196,7 +196,7 @@ impl TransportStream {
                 } else {
                     &buf.chunk()[..payload::Bytes::MAX_SIZE]
                 };
-                make_raw_payload(&pes_data)?
+                make_raw_payload(pes_data)?
             };
             buf.advance(raw_payload.len());
 
@@ -228,7 +228,7 @@ impl Default for TransportStream {
 
 
 fn make_raw_payload(pes_data: &[u8]) -> Result<ts::payload::Bytes, TsError> {
-    ts::payload::Bytes::new(&pes_data).map_err(|_| TsError::PayloadTooBig)
+    ts::payload::Bytes::new(pes_data).map_err(|_| TsError::PayloadTooBig)
 }
 
 

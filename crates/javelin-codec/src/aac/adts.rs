@@ -74,7 +74,7 @@ impl WriteFormat<Aac> for AudioDataTransportStream {
         tmp.put_u8(channel_configuration2 | frame_length1);
 
         // Frame length cont. (11 bits) and buffer fullness (5 bits)
-        let frame_length2 = ((frame_length & 0x7FF) << 5) as u16;
+        let frame_length2 = (frame_length & 0x7FF) << 5;
         tmp.put_u16(frame_length2 | 0b0000_0000_0001_1111);
 
         // Buffer fullness cont. (6 bits) and number of AAC frames minus one (2 bits = 0)

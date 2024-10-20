@@ -30,7 +30,7 @@ impl ReadFormat<Avc> for Avcc {
             let nalu_data = buf
                 .chunk()
                 .get(..nalu_length)
-                .ok_or_else(|| AvcError::NotEnoughData("NALU data"))?
+                .ok_or(AvcError::NotEnoughData("NALU data"))?
                 .to_owned();
 
             buf.advance(nalu_length);

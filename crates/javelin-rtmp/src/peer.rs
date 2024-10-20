@@ -6,7 +6,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{self, mpsc, oneshot};
 use tokio::time::timeout;
 use tokio_util::codec::{BytesCodec, Framed};
-use tracing::{debug, error, info, trace};
+use tracing::{debug, info, trace};
 
 use crate::config::Config;
 use crate::error::Error;

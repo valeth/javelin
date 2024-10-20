@@ -39,8 +39,8 @@ impl UserRepository for Database {
     }
 
     async fn add_user_with_key(&mut self, name: &str, key: &str) -> Result<(), Error> {
-        let query = match self.user_by_name(&name).await? {
-            Some(user) if &user.key == &key => {
+        let query = match self.user_by_name(name).await? {
+            Some(user) if user.key == key => {
                 debug!("User with key already exists, no update required");
                 return Ok(());
             }

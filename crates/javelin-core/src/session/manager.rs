@@ -66,14 +66,17 @@ where
                     Session::new(incoming, outgoing).run().await;
                 });
 
-                if let Err(_) = responder.send(handle) {
+                if responder.send(handle).is_err() {
                     bail!("Failed to send response");
                 }
             }
             ManagerMessage::JoinSession((name, responder)) => {
                 let sessions = self.sessions.read().await;
                 if let Some((handle, watcher)) = sessions.get(&name) {
-                    if let Err(_) = responder.send((handle.clone(), watcher.subscribe())) {
+                    if responder
+                        .send((handle.clone(), watcher.subscribe()))
+                        .is_err()
+                    {
                         bail!("Failed to send response");
                     }
                 }

@@ -63,7 +63,7 @@ impl Metadata {
         K: AsRef<str>,
         V: FromStr,
     {
-        self.0.get(key.as_ref()).map(|v| v.parse().ok()).flatten()
+        self.0.get(key.as_ref()).and_then(|v| v.parse().ok())
     }
 }
 

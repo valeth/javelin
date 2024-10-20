@@ -109,7 +109,7 @@ impl Writer {
             self.keyframe_counter += 1;
         }
 
-        let video = match self.avc_coder.read_format(avc::Avcc, &payload)? {
+        let video = match self.avc_coder.read_format(avc::Avcc, payload)? {
             Some(avc) => self.avc_coder.write_format(avc::AnnexB, avc)?,
             None => return Ok(()),
         };
@@ -192,7 +192,7 @@ fn prepare_stream_directory<P: AsRef<Path>>(path: P) -> Result<()> {
     }
 
     debug!("Creating HLS directory at '{}'", stream_path.display());
-    fs::create_dir_all(&stream_path)?;
+    fs::create_dir_all(stream_path)?;
 
     Ok(())
 }

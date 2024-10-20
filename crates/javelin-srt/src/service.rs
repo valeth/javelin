@@ -35,7 +35,7 @@ impl Service {
     pub async fn run(self) {
         let addr = self.config.addr;
 
-        let (_listener, mut conn) = SrtListener::builder().bind(addr.clone()).await.unwrap();
+        let (_listener, mut conn) = SrtListener::builder().bind(addr).await.unwrap();
 
         info!("Listening for SRT connections on {}", &addr);
 

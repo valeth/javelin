@@ -22,18 +22,18 @@ pub struct Playlist {
 
 impl Playlist {
     const DEFAULT_TARGET_DURATION: u64 = 6;
-    const PLAYLIST_CACHE_DURATION: u64 = 30000;
-
-    // milliseconds
+    const PLAYLIST_CACHE_DURATION_MS: u64 = 30000;
 
     pub fn new<P>(path: P, file_cleaner: file_cleaner::Sender) -> Self
     where
         P: Into<PathBuf>,
     {
-        let mut playlist = MediaPlaylist::default();
-        playlist.version = Some(3);
-        playlist.target_duration = Self::DEFAULT_TARGET_DURATION;
-        playlist.media_sequence = 0;
+        let playlist = MediaPlaylist {
+            version: Some(3),
+            target_duration: Self::DEFAULT_TARGET_DURATION,
+            media_sequence: 0,
+            ..Default::default()
+        };
 
         Self {
             file_path: path.into(),
@@ -75,8 +75,8 @@ impl Playlist {
 
 
         if self.cleanup_started {
-            self.schedule_for_deletion(1, Self::PLAYLIST_CACHE_DURATION);
-        } else if self.current_duration >= Self::PLAYLIST_CACHE_DURATION {
+            self.schedule_for_deletion(1, Self::PLAYLIST_CACHE_DURATION_MS);
+        } else if self.current_duration >= Self::PLAYLIST_CACHE_DURATION_MS {
             self.cleanup_started = true;
         }
 
@@ -92,10 +92,10 @@ impl Playlist {
         let mut tmp_file = tempfile::Builder::new()
             .prefix(".playlist.m3u")
             .suffix(".tmp")
-            .tempfile_in(&self.hls_root())?;
+            .tempfile_in(self.hls_root())?;
 
         self.write_temporary_file(&mut tmp_file)?;
-        fs::rename(&tmp_file.path(), &self.file_path)?;
+        fs::rename(tmp_file.path(), &self.file_path)?;
 
         Ok(())
     }
@@ -112,9 +112,9 @@ impl Playlist {
 
         #[cfg(unix)]
         {
-            let mut perms = fs::metadata(&tmp_file.path())?.permissions();
+            let mut perms = fs::metadata(tmp_file.path())?.permissions();
             perms.set_mode(0o644);
-            fs::set_permissions(&tmp_file.path(), perms)?;
+            fs::set_permissions(tmp_file.path(), perms)?;
         }
 
         Ok(())

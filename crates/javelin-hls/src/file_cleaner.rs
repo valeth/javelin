@@ -48,9 +48,8 @@ impl FileCleaner {
             );
             self.queue.insert(files, timestamp);
 
-            match self.queue_rx.receive().await {
-                Some(expired) => remove_files(&expired),
-                None => (),
+            if let Some(expired) = self.queue_rx.receive().await {
+                remove_files(&expired)
             }
         }
     }
