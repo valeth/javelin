@@ -15,9 +15,7 @@ github = [
 
 
 [advisories]
-ignore = [
-    "RUSTSEC-2024-0320" # TODO: rewrite config handling and remove yaml-rust
-]
+ignore = []
 
 
 [licenses]
@@ -68,7 +66,7 @@ reason = "some core crates still depend on syn version 1 (mostly sqlx)"
 [[bans.skip]]
 name = "sync_wrapper"
 version = "=0.1"
-# reason = "axum depends on two different versions through tower"
+reason = "axum depends on two different versions through tower"
 
 [[bans.skip]]
 name = "hashbrown"

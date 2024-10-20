@@ -11,7 +11,7 @@ impl Config {
     where
         P: AsRef<Path>,
     {
-        let path = config_dir.as_ref().join("javelin.yml");
+        let path = config_dir.as_ref().join("javelin.toml");
 
         let config = config::Config::builder()
             .add_source(config::File::from(path))

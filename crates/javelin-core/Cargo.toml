@@ -22,7 +22,7 @@ tracing.workspace = true
 [dependencies.config]
 version = "0.14"
 default-features = false
-features = ["yaml"]
+features = ["toml"]
 
 [dependencies.tokio]
 workspace = true
