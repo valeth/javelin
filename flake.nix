@@ -3,42 +3,45 @@
 
     inputs = {
         nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-        flake-utils = {
-            url  = "github:numtide/flake-utils";
-            inputs.nixpkgs.follows = "nixpkgs";
-        };
         rust-overlay = {
             url = "github:oxalica/rust-overlay";
             inputs.nixpkgs.follows = "nixpkgs";
         };
     };
 
-    outputs = { nixpkgs, flake-utils, rust-overlay, ... }:
-        flake-utils.lib.eachDefaultSystem (system:
-            let
-                overlays = [ (import rust-overlay) ];
-                pkgs = import nixpkgs { inherit system overlays; };
+    outputs = { nixpkgs, rust-overlay, ... }:
+    let
+        lib = nixpkgs.lib;
+        systems = [ "x86_64-linux" ];
 
-                rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-                rustNightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.minimal.override {
-                    extensions = [ "rustfmt" ];
-                    targets = [ "x86_64-unknown-linux-gnu" ];
-                });
+        forEachSystem = fn: lib.genAttrs systems (system:
+        let
+            overlays = [ (import rust-overlay) ];
+            pkgs = import nixpkgs { inherit system overlays; };
+        in fn { inherit pkgs; } );
 
-                buildTools = [
+        mkRustToolchain = pkgs: pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+    in {
+        devShells = forEachSystem ({ pkgs }:
+        let
+            rustToolchain = mkRustToolchain pkgs;
+            rustNightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (t: t.minimal.override {
+                extensions = [ "rustfmt" ];
+            });
+        in {
+            default = pkgs.mkShell {
+                name = "javelin";
+
+                nativeBuildInputs = [
                     rustToolchain
                     rustNightlyToolchain
                 ];
-            in {
-                devShells.default = pkgs.mkShell {
-                    name = "javelin";
 
-                    nativeBuildInputs = buildTools;
-
-                    packages = with pkgs; [
-                        cargo-deny
-                        sqlx-cli
-                    ];
-                };
-            });
+                packages = with pkgs; [
+                    cargo-deny
+                    sqlx-cli
+                ];
+            };
+        });
+    };
 }
